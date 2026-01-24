@@ -1,10 +1,8 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
 import { sessionConfig } from '@/src/lib/config'
+import { SESSION_COOKIE_NAME, SESSION_MAX_AGE } from '@/src/lib/constants/session'
 import type { Session, Generation } from '@/src/types/database'
-
-const SESSION_COOKIE_NAME = 'ai-stickies-session'
-const SESSION_MAX_AGE = 24 * 60 * 60 // 24 hours in seconds
 
 interface RateLimitResult {
   allowed: boolean

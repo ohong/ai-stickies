@@ -7,10 +7,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
 import { generateStickerPack, type PackGenerationResult } from '@/src/lib/services/pack.service'
+import { getPublicUrl } from '@/src/lib/utils/storage'
+import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
 import { storageConfig } from '@/src/lib/config'
 import type { FidelityLevel, StylePreview, Generation } from '@/src/types/database'
-
-const SESSION_COOKIE_NAME = 'ai-stickies-session'
 
 interface GeneratePacksRequest {
   generationId: string
@@ -208,11 +208,3 @@ export async function POST(
   }
 }
 
-function getPublicUrl(
-  supabase: ReturnType<typeof createAdminClient>,
-  bucket: string,
-  path: string
-): string {
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-  return data.publicUrl
-}

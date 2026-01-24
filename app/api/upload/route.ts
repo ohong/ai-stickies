@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
 import { storageConfig, sessionConfig } from '@/src/lib/config'
-
-const SESSION_COOKIE_NAME = 'ai-stickies-session'
 
 interface UploadSuccessResponse {
   uploadId: string

@@ -3,7 +3,7 @@
 **For:** Fahmi
 **From:** Oscar
 **Date:** January 24, 2026
-**Project Status:** ~95% Complete - Full Flow Working
+**Project Status:** ~98% Complete - Full Flow Working + E2E Tests
 
 ---
 
@@ -58,8 +58,10 @@ AI Stickies lets users:
 - Sticker dimensions: 370×320px max (LINE requirement)
 - Sticker format: PNG with transparency
 - Sticker size: <500KB each
-- Pack size: 8-40 stickers (we default to 10)
+- Pack size: 10 stickers per pack (US-1.4)
+- Text stickers: ~40% of pack (4 out of 10)
 - Rate limit: 10 generations per session
+- Session expiry: 24 hours (US-3.1)
 
 ---
 
@@ -96,9 +98,16 @@ AI Stickies lets users:
 | Feature | Priority | Notes |
 |---------|----------|-------|
 | Database migrations | MEDIUM | No SQL file - schema must be created manually |
-| Testing | MEDIUM | No unit/integration/E2E tests |
 | Error tracking | LOW | No Sentry or similar |
 | Analytics | LOW | No usage tracking |
+
+### Recently Added ✅
+
+| Feature | Notes |
+|---------|-------|
+| E2E tests | Playwright tests in `e2e/` - run `bun test:e2e` |
+| History page | `/history` - view and re-download past generations |
+| Config compliance | Session TTL: 24hr (was 7 days), Pack size: 10 (was 8) |
 
 ---
 
@@ -114,6 +123,7 @@ ai-stickies/
 │   │   ├── page.tsx              # Upload & customize
 │   │   ├── styles/page.tsx       # Style selection (after previews)
 │   │   └── results/page.tsx      # Results & download
+│   ├── history/page.tsx          # Generation history (US-3.2)
 │   ├── api/                      # API routes
 │   │   ├── upload/route.ts
 │   │   ├── session/route.ts
@@ -152,6 +162,12 @@ ai-stickies/
 │   ├── hooks/                    # React hooks
 │   ├── types/                    # TypeScript types
 │   └── constants/                # Style configs, emotions, etc.
+├── e2e/                          # Playwright E2E tests
+│   ├── upload-flow.spec.ts
+│   ├── generation-flow.spec.ts
+│   ├── download-flow.spec.ts
+│   ├── rate-limiting.spec.ts
+│   └── history-page.spec.ts
 └── docs/                         # Documentation
 ```
 
@@ -318,7 +334,7 @@ ENABLE_MARKETPLACE_EXPORT=true
 
 # Session Config
 SESSION_MAX_GENERATIONS=10
-SESSION_TTL_DAYS=7
+SESSION_TTL_DAYS=1  # 24 hours per US-3.1
 ```
 
 ### Priority 2: Important (Should Have)
@@ -371,20 +387,37 @@ SESSION_TTL_DAYS=7
 
 #### 4.6 Testing
 
-**Current State:** No tests exist.
+**Current State:** E2E tests added with Playwright.
 
-**Suggested Testing:**
+**Available Tests:**
+
+```bash
+# Run all E2E tests
+bun test:e2e
+
+# Run with UI
+bun test:e2e:ui
+
+# Run headed (see browser)
+bun test:e2e:headed
+```
+
+**Test Files:**
+- `e2e/upload-flow.spec.ts` - Upload validation
+- `e2e/generation-flow.spec.ts` - Style selection, pack config
+- `e2e/download-flow.spec.ts` - Download buttons, ZIP structure
+- `e2e/rate-limiting.spec.ts` - Session counter, limits
+- `e2e/history-page.spec.ts` - History page (US-3.2)
+
+**Future Testing:**
 
 1. **Unit tests** for services:
    - `prompt.service.test.ts`
    - `image-processing.service.test.ts`
 
 2. **Integration tests** for API routes:
-   - Upload flow
-   - Generation flow
-
-3. **E2E tests** with Playwright:
-   - Full user journey
+   - Upload flow with mocked storage
+   - Generation flow with mocked AI
 
 ---
 

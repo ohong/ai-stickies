@@ -6,6 +6,7 @@
 import sharp from 'sharp'
 import type { Language } from '@/src/types'
 import { SUPPORTED_FONTS } from '@/src/constants/line-specs'
+import { STICKER_DIMENSIONS } from '@/src/types/sticker'
 
 export interface TextOverlayOptions {
   language?: Language
@@ -51,8 +52,8 @@ export async function addTextOverlay(
 
   // Get image dimensions
   const metadata = await sharp(buffer).metadata()
-  const width = metadata.width || 370
-  const height = metadata.height || 320
+  const width = metadata.width || STICKER_DIMENSIONS.width
+  const height = metadata.height || STICKER_DIMENSIONS.height
 
   // Get font for language
   const fontFamily = SUPPORTED_FONTS[opts.language] || 'sans-serif'
@@ -189,8 +190,8 @@ export async function addTextWithShadow(
   console.log(`[text-overlay] Adding text with shadow: "${text}"`)
 
   const metadata = await sharp(buffer).metadata()
-  const width = metadata.width || 370
-  const height = metadata.height || 320
+  const width = metadata.width || STICKER_DIMENSIONS.width
+  const height = metadata.height || STICKER_DIMENSIONS.height
 
   const fontFamily = SUPPORTED_FONTS[opts.language] || 'sans-serif'
   const textY = calculateTextY(opts.position, height, opts.fontSize, opts.padding)
@@ -251,8 +252,8 @@ export async function createTextSticker(
   text: string,
   options: TextOverlayOptions & { width?: number; height?: number } = {}
 ): Promise<Buffer> {
-  const width = options.width || 370
-  const height = options.height || 320
+  const width = options.width || STICKER_DIMENSIONS.width
+  const height = options.height || STICKER_DIMENSIONS.height
   const opts = { ...DEFAULT_OPTIONS, ...options, position: 'center' as const }
 
   console.log(`[text-overlay] Creating text-only sticker: "${text}"`)

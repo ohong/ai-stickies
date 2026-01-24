@@ -6,9 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import { getPublicUrl } from '@/src/lib/utils/storage'
+import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
 import { storageConfig } from '@/src/lib/config'
-
-const SESSION_COOKIE_NAME = 'ai-stickies-session'
 
 interface StickerResponse {
   id: string
@@ -163,11 +163,3 @@ export async function GET(
   }
 }
 
-function getPublicUrl(
-  supabase: ReturnType<typeof createAdminClient>,
-  bucket: string,
-  path: string
-): string {
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-  return data.publicUrl
-}

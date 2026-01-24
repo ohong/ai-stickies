@@ -12,6 +12,7 @@ import {
   createTabImage,
 } from './image-processing.service'
 import { createPackZip } from '../utils/zip'
+import { getPublicUrl } from '../utils/storage'
 import { storageConfig, generationConfig } from '../config'
 import type {
   Language,
@@ -405,18 +406,6 @@ async function createAndStorePackZip(
     console.error('Failed to create pack ZIP:', error)
     return null
   }
-}
-
-/**
- * Get public URL for storage path
- */
-function getPublicUrl(
-  supabase: ReturnType<typeof createAdminClient>,
-  bucket: string,
-  path: string
-): string {
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-  return data.publicUrl
 }
 
 /**

@@ -196,8 +196,8 @@ function generateFallbackPackPrompts(
   const textExamples = TEXT_EXAMPLES[language] ?? TEXT_EXAMPLES.en
 
   return emotions.map((emotion, index) => {
-    // ~40% should have text
-    const hasText = index % 3 === 0
+    // US-1.4: ~40% should have text (first 4 of 10 stickers)
+    const hasText = index < 4
     const textContent = hasText
       ? emotion.suggestedText[language] ?? textExamples[index % textExamples.length]
       : null

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Sparkles, Store, Loader2 } from 'lucide-react'
+import { ArrowLeft, Sparkles, Store, Loader2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SessionCounter } from '@/app/components/create'
 import { useSession } from '@/src/hooks/use-session'
@@ -254,10 +254,14 @@ function ResultsContent() {
           </Button>
         </div>
 
-        <div className="flex justify-center mt-6">
+        <div className="flex justify-center gap-4 mt-6">
           <Button variant="ghost" onClick={() => router.push('/create')}>
             <Sparkles className="size-4 mr-2" />
             Create More Stickers
+          </Button>
+          <Button variant="ghost" onClick={() => router.push('/history')}>
+            <History className="size-4 mr-2" />
+            View History
           </Button>
         </div>
       </main>

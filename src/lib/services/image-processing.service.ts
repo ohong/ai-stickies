@@ -114,8 +114,8 @@ async function compressToSize(
   // If still too large, reduce dimensions
   if (result.length > maxBytes) {
     const scaleFactor = Math.sqrt(maxBytes / result.length)
-    const newWidth = Math.floor((options.width ?? 370) * scaleFactor)
-    const newHeight = Math.floor((options.height ?? 320) * scaleFactor)
+    const newWidth = Math.floor((options.width ?? STICKER_DIMENSIONS.width) * scaleFactor)
+    const newHeight = Math.floor((options.height ?? STICKER_DIMENSIONS.height) * scaleFactor)
 
     result = await sharp(imageBuffer)
       .resize({
@@ -420,8 +420,8 @@ export async function compressImage(
     let scale = 0.9
 
     while (getBufferSizeKB(result) > maxSizeKB && scale > 0.5) {
-      const newWidth = Math.round((metadata.width || 370) * scale)
-      const newHeight = Math.round((metadata.height || 320) * scale)
+      const newWidth = Math.round((metadata.width || STICKER_DIMENSIONS.width) * scale)
+      const newHeight = Math.round((metadata.height || STICKER_DIMENSIONS.height) * scale)
 
       result = await sharp(buffer)
         .resize(newWidth, newHeight, { fit: 'inside' })
