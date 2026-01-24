@@ -3,13 +3,13 @@
 **For:** Fahmi
 **From:** Oscar
 **Date:** January 24, 2026
-**Project Status:** ~85% Complete - Core Flow Working
+**Project Status:** ~95% Complete - Full Flow Working
 
 ---
 
 ## TL;DR
 
-AI Stickies is a web app that generates personalized LINE stickers from selfies using AI. The core flow works end-to-end: upload photo → generate style previews → select styles → generate sticker packs → download. Main gaps are full pack generation (currently only generates previews, not full 10-sticker packs) and some polish items.
+AI Stickies is a web app that generates personalized LINE stickers from selfies using AI. The core flow works end-to-end: upload photo → generate style previews → select styles → generate full 10-sticker packs → download. The app is production-ready with minor polish items remaining.
 
 ---
 
@@ -71,33 +71,31 @@ AI Stickies lets users:
 |---------|--------|-------|
 | Landing page | ✅ Complete | Hero, features, FAQ, style gallery |
 | Image upload | ✅ Complete | Drag-drop, validation, Supabase storage |
-| Session management | ✅ Complete | Cookie-based, rate limiting |
+| Session management | ✅ Complete | Cookie-based, rate limiting (8/10 shown) |
 | Style preview generation | ✅ Complete | Generates 5 previews in parallel |
 | Style selection page | ✅ Complete | Select 1-5 styles |
-| FLUX.2 integration | ✅ Complete | Image-to-image with reference photo |
+| **Full pack generation** | ✅ Complete | 10 stickers per pack, multiple packs |
+| **Emotion variety** | ✅ Complete | Happy, love, OK, sorry, confused, surprised, etc. |
+| **Text overlays** | ✅ Complete | "Hore!", "Maaf!", "OK!", "Apa!?" in selected language |
+| FLUX.2 integration | ✅ Complete | Image-to-image with reference photo, PNG output |
 | Gemini fallback | ✅ Complete | Auto-fallback if FLUX fails |
-| Results page UI | ✅ Complete | Grid display, modal viewer |
+| Results page UI | ✅ Complete | Grid display, sticker count per pack |
 | Single pack download | ✅ Complete | ZIP with proper structure |
+| Download all packs | ✅ Complete | "Download All (2 packs)" button |
 | LINE spec compliance | ✅ Complete | Correct dimensions, PNG format |
 
 ### What's Partially Working ⚠️
 
 | Feature | Status | What's Missing |
 |---------|--------|----------------|
-| Full pack generation | ⚠️ 60% | API exists but may not generate all 10 stickers reliably |
-| Fireworks prompts | ⚠️ 70% | Fallback to simple prompts if LLM fails |
-| Text overlay | ⚠️ 50% | Service exists, not fully integrated into pack gen |
-| Marketplace export | ⚠️ 80% | Export works, needs better validation UI |
-| Download all packs | ⚠️ 80% | Endpoint exists, needs testing |
+| Marketplace export | ⚠️ 90% | Export works, could use better validation UI |
+| Fireworks prompts | ⚠️ 85% | Working, has fallback to simple prompts if LLM fails |
 
 ### What's Missing ❌
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Database migrations | HIGH | No SQL file - schema must be created manually |
-| Full 10-sticker pack gen | HIGH | Preview gen works, pack gen needs completion |
-| Emotion variety in packs | MEDIUM | Should use different emotions per sticker |
-| Text stickers (40%) | MEDIUM | Should have text overlay on some stickers |
+| Database migrations | MEDIUM | No SQL file - schema must be created manually |
 | Testing | MEDIUM | No unit/integration/E2E tests |
 | Error tracking | LOW | No Sentry or similar |
 | Analytics | LOW | No usage tracking |
@@ -279,56 +277,19 @@ Storage buckets needed:
 
 ### Priority 1: Critical (Must Have)
 
-#### 4.1 Complete Full Pack Generation
+#### 4.1 Database Setup Script
 
-**Current State:** `POST /api/generate/packs` exists but doesn't reliably generate 10 stickers.
-
-**What Needs to Be Done:**
-
-1. **Fix pack generation flow** in `src/lib/services/pack.service.ts`:
-   ```typescript
-   // For each selected style:
-   // 1. Generate 10 unique prompts with emotion variety
-   // 2. Generate 10 images (batched, 3 at a time)
-   // 3. Process each for LINE specs
-   // 4. Add text overlay to ~40% of stickers
-   // 5. Create pack ZIP
-   // 6. Store in database
-   ```
-
-2. **Ensure emotion variety** - Each sticker should have a different emotion:
-   - Happy, excited, love, grateful, proud (positive)
-   - Sad, tired, sorry, confused, angry (negative)
-   - Check `src/constants/emotions.ts` for full list
-
-3. **Integrate text overlay** - ~40% of stickers should have text:
-   - Use `src/lib/services/text-overlay.service.ts`
-   - Text should be in user's selected language
-   - Check `src/constants/languages.ts` for translations
-
-4. **Handle failures gracefully** - If one sticker fails:
-   - Retry up to 3 times
-   - If still fails, generate without that sticker (min 8 required)
-   - Never fail the whole pack for one sticker
-
-**Files to Modify:**
-- `src/lib/services/pack.service.ts` - Main logic
-- `app/api/generate/packs/route.ts` - API endpoint
-- `src/lib/services/prompt.service.ts` - Prompt generation
-
-#### 4.2 Database Setup Script
-
-**Current State:** No migration file exists.
+**Current State:** No migration file exists (schema must be created manually in Supabase).
 
 **What Needs to Be Done:**
 
-1. Create `scripts/setup-database.sql` with all table definitions
+1. Create `scripts/setup-database.sql` with all table definitions (see schema in Section 3)
 2. Add to `scripts/setup-supabase.ts`:
    - Create storage buckets
    - Set bucket policies (public read for stickers)
 3. Document in README how to run setup
 
-#### 4.3 Environment Variables Documentation
+#### 4.2 Environment Variables Documentation
 
 **Current State:** `.env.example` referenced but may not exist in repo.
 
@@ -362,7 +323,7 @@ SESSION_TTL_DAYS=7
 
 ### Priority 2: Important (Should Have)
 
-#### 4.4 Marketplace Export Polish
+#### 4.3 Marketplace Export Polish
 
 **Current State:** Export modal exists but validation UI is basic.
 
@@ -382,16 +343,15 @@ SESSION_TTL_DAYS=7
 **Files to Modify:**
 - `app/components/results/marketplace-export-modal.tsx`
 
-#### 4.5 Results Page - Pack Display
+#### 4.4 Results Page - Polish (Optional)
 
-**Current State:** Shows stickers but pack structure may not be complete.
+**Current State:** Working well - shows sticker count per pack, grid layout, download buttons.
 
-**What Needs to Be Done:**
+**Nice to Have:**
 
-1. Ensure all 10 stickers display per pack
-2. Add "Regenerate" button for individual stickers (stretch goal)
-3. Show emotion label under each sticker
-4. Indicate which stickers have text
+1. Add "Regenerate" button for individual stickers user doesn't like
+2. Show emotion label under each sticker on hover
+3. Add sticker lightbox/modal for full-size preview
 
 **Files to Modify:**
 - `app/create/results/page.tsx`
@@ -399,7 +359,7 @@ SESSION_TTL_DAYS=7
 
 ### Priority 3: Nice to Have
 
-#### 4.6 Progress Indicator for Pack Generation
+#### 4.5 Progress Indicator for Pack Generation
 
 **Current State:** No real-time progress during pack generation.
 
@@ -409,7 +369,7 @@ SESSION_TTL_DAYS=7
 2. Poll from client every 2 seconds
 3. Show "Generating sticker 3 of 10..." type message
 
-#### 4.7 Testing
+#### 4.6 Testing
 
 **Current State:** No tests exist.
 

@@ -12,7 +12,7 @@ import {
   createTabImage,
 } from './image-processing.service'
 import { createPackZip } from '../utils/zip'
-import { storageConfig } from '../config'
+import { storageConfig, generationConfig } from '../config'
 import type {
   Language,
   FidelityLevel,
@@ -21,8 +21,7 @@ import type {
   Generation,
 } from '../../types/database'
 
-const BATCH_SIZE = 3 // Generate 3 images at a time
-const MAX_RETRIES = 1 // Retry failed stickers once
+const { batchSize: BATCH_SIZE, maxRetries: MAX_RETRIES } = generationConfig
 
 export interface PackGenerationInput {
   generationId: string

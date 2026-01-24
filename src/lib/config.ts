@@ -56,7 +56,7 @@ export const aiConfig = {
 // Session configuration
 export const sessionConfig = {
   maxGenerations: optionalEnvNumber('SESSION_MAX_GENERATIONS', 10),
-  sessionTtlDays: optionalEnvNumber('SESSION_TTL_DAYS', 7),
+  sessionTtlDays: optionalEnvNumber('SESSION_TTL_DAYS', 1), // US-3.1: 24hr expiry
 }
 
 // Storage configuration
@@ -69,7 +69,9 @@ export const storageConfig = {
 
 // Generation configuration
 export const generationConfig = {
-  defaultPackSize: 8 as const,
+  defaultPackSize: 10 as const, // US-1.4: 10 stickers per pack
+  batchSize: 3 as const, // Generate N images at a time
+  maxRetries: 1 as const, // Retry failed stickers once
   pollIntervalMs: optionalEnvNumber('POLL_INTERVAL_MS', 2000),
   maxPollAttempts: optionalEnvNumber('MAX_POLL_ATTEMPTS', 60),
   imageWidth: 370,
