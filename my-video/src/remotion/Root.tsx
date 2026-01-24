@@ -10,10 +10,19 @@ import {
   VIDEO_WIDTH,
 } from "../../types/constants";
 import { NextLogo } from "./MyComp/NextLogo";
+import { Master } from "./AiStickiesDemo/Master";
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      <Composition
+        id="DemoMain"
+        component={Master}
+        durationInFrames={2850}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
       <Composition
         id="AppDemo"
         component={AppDemo}

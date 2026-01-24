@@ -35,60 +35,67 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 md:py-32">
-      <div className="text-center mb-16">
-        <span className="text-primary font-medium text-sm uppercase tracking-widest">
-          FAQ
-        </span>
-        <h2 className="mt-4 text-3xl md:text-4xl font-bold text-foreground text-balance">
-          Frequently asked questions
-        </h2>
-      </div>
+    <section id="faq" className="py-24 bg-[#F8F9FA]">
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="text-center mb-16">
+          <span className="text-[#09C754] font-bold text-sm uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
+            FAQ
+          </span>
+          <h2 className="mt-6 text-3xl md:text-5xl font-black text-foreground text-balance">
+            Frequently asked questions
+          </h2>
+        </div>
 
-      <div className="max-w-2xl mx-auto">
-        {faqs.map((faq, i) => (
-          <div key={i} className="border-b border-border last:border-0">
-            <button
-              onClick={() => setOpenIndex(openIndex === i ? null : i)}
-              className="w-full py-5 flex items-center justify-between text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
-              aria-expanded={openIndex === i}
-            >
-              <span className="font-medium text-foreground pr-4">
-                {faq.question}
-              </span>
-              <div
+        <div className="space-y-4">
+          {faqs.map((faq, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm transition-shadow hover:shadow-md">
+              <button
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="w-full py-6 px-6 flex items-center justify-between text-left focus:outline-none"
+                aria-expanded={openIndex === i}
+              >
+                <span className="font-bold text-lg text-foreground pr-8">
+                  {faq.question}
+                </span>
+                <div
+                  className={cn(
+                    "size-8 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0 transition-colors duration-200",
+                    openIndex === i && "bg-[#09C754] border-[#09C754] text-white"
+                  )}
+                >
+                  <svg
+                    className={cn(
+                      "size-4 transition-transform duration-200",
+                      openIndex === i ? "transform rotate-180" : "text-gray-400"
+                    )}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </button>
+              <div 
                 className={cn(
-                  "size-6 rounded-full border border-border flex items-center justify-center shrink-0",
-                  openIndex === i && "bg-primary border-primary"
+                  "px-6 grid transition-all duration-300 ease-in-out",
+                  openIndex === i ? "grid-rows-[1fr] pb-6 opacity-100" : "grid-rows-[0fr] pb-0 opacity-0"
                 )}
               >
-                <svg
-                  className={cn(
-                    "size-3",
-                    openIndex === i ? "text-primary-foreground" : "text-muted-foreground"
-                  )}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d={openIndex === i ? "M20 12H4" : "M12 4v16m8-8H4"}
-                  />
-                </svg>
+                <div className="overflow-hidden">
+                  <p className="text-muted-foreground leading-relaxed text-pretty">
+                    {faq.answer}
+                  </p>
+                </div>
               </div>
-            </button>
-            {openIndex === i && (
-              <div className="pb-5">
-                <p className="text-muted-foreground leading-relaxed text-pretty">
-                  {faq.answer}
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

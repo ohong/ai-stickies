@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-01-24T15:23:47.083Z",
+  "packName": "High Fidelity",
+  "stickerCount": 10,
+  "hasMainImage": true,
+  "hasTabImage": true,
+  "stickers": [
+    {
+      "sequenceNumber": 1,
+      "emotion": "happy",
+      "hasText": true,
+      "textContent": "Yay!"
+    },
+    {
+      "sequenceNumber": 2,
+      "emotion": "thanks",
+      "hasText": false,
+      "textContent": null
+    },
+    {
+      "sequenceNumber": 3,
+      "emotion": "love",
+      "hasText": false,
+      "textContent": null
+    },
+    {
+      "sequenceNumber": 4,
+      "emotion": "ok",
+      "hasText": true,
+      "textContent": "OK!"
+    },
+    {
+      "sequenceNumber": 5,
+      "emotion": "sad",
+      "hasText": false,
+      "textContent": null
+    },
+    {
+      "sequenceNumber": 6,
+      "emotion": "excited",
+      "hasText": false,
+      "textContent": null
+    },
+    {
+      "sequenceNumber": 7,
+      "emotion": "sorry",
+      "hasText": true,
+      "textContent": "Sorry!"
+    },
+    {
+      "sequenceNumber": 8,
+      "emotion": "thinking",
+      "hasText": false,
+      "textContent": null
+    },
+    {
+      "sequenceNumber": 9,
+      "emotion": "tired",
+      "hasText": false,
+      "textContent": null
+    },
+    {
+      "sequenceNumber": 10,
+      "emotion": "surprised",
+      "hasText": true,
+      "textContent": "What?!"
+    }
+  ],
+  "specifications": {
+    "stickerMaxWidth": 370,
+    "stickerMaxHeight": 320,
+    "mainImageSize": 240,
+    "tabImageWidth": 96,
+    "tabImageHeight": 74,
+    "maxFileSizeKB": 300
+  }
+}
