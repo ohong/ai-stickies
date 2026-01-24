@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { sessionCounterState$ } from '@/src/lib/state/session-counter'
 
 interface GenerationHistoryItem {
   generationId: string
@@ -55,6 +56,7 @@ export function useSession() {
         throw new Error(json.error ?? 'Failed to fetch session')
       }
 
+      // Update local state
       setState({
         sessionId: json.data.sessionId,
         generationCount: json.data.generationCount,
@@ -64,6 +66,10 @@ export function useSession() {
         isLoading: false,
         error: null,
       })
+
+      // Sync with Legend State observable for SessionCounter component
+      sessionCounterState$.remaining.set(json.data.remainingGenerations)
+      sessionCounterState$.total.set(json.data.maxGenerations)
     } catch (err) {
       setState((prev) => ({
         ...prev,
@@ -83,11 +89,19 @@ export function useSession() {
 
   // Optimistic update for UI responsiveness
   const decrementGenerations = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      generationCount: prev.generationCount + 1,
-      remainingGenerations: Math.max(0, prev.remainingGenerations - 1),
-    }))
+    setState((prev) => {
+      const newRemaining = Math.max(0, prev.remainingGenerations - 1)
+      const newState = {
+        ...prev,
+        generationCount: prev.generationCount + 1,
+        remainingGenerations: newRemaining,
+      }
+      
+      // Sync with Legend State observable for instant UI update
+      sessionCounterState$.remaining.set(newRemaining)
+      
+      return newState
+    })
   }, [])
 
   return {
