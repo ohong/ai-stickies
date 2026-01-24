@@ -115,11 +115,11 @@ export const STYLES: Record<FidelityLevel, StyleConfig> = {
 }
 
 export const STYLE_ORDER: FidelityLevel[] = [
-  'high',
-  'stylized',
   'chibi',
   'abstract',
   'minimalist',
+  'stylized',
+  'high',
 ]
 
 export function getStyleConfig(level: FidelityLevel): StyleConfig {
