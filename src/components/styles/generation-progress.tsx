@@ -1,15 +1,22 @@
 'use client'
 
-import { observer, Memo } from '@legendapp/state/react'
 import { Loader2, X } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { generationState$ } from '@/src/lib/state'
 
-export const GenerationProgress = observer(() => {
-  const totalStyles = 5
-  const progress = generationState$.progress.get()
-  const currentStyle = generationState$.currentStyle.get()
+interface GenerationProgressProps {
+  progress: number
+  currentStyle: string | null
+  totalStyles?: number
+  onCancel?: () => void
+}
+
+export function GenerationProgress({
+  progress,
+  currentStyle,
+  totalStyles = 5,
+  onCancel,
+}: GenerationProgressProps) {
   const currentIndex = Math.min(Math.floor((progress / 100) * totalStyles) + 1, totalStyles)
 
   return (
@@ -30,25 +37,25 @@ export const GenerationProgress = observer(() => {
           : 'Preparing generation...'}
       </p>
 
-      <Progress 
-        value={progress} 
-        className="mb-4"
-      />
+      <Progress value={progress} className="mb-4" />
 
       <p className="text-xs text-muted-foreground text-center mb-4 tabular-nums">
-        <Memo>{() => `${progress}% complete`}</Memo>
+        {progress}% complete
       </p>
 
-      <div className="flex justify-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <X className="size-4 mr-1" />
-          Cancel
-        </Button>
-      </div>
+      {onCancel && (
+        <div className="flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4 mr-1" />
+            Cancel
+          </Button>
+        </div>
+      )}
     </div>
   )
-})
+}
