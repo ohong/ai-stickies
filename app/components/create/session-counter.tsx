@@ -1,39 +1,26 @@
 'use client'
 
+import { observer, Memo } from '@legendapp/state/react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { sessionCounterState$ } from '@/src/lib/state/session-counter'
 
-interface SessionCounterProps {
-  remaining: number
-  total: number
-  isLoading?: boolean
-}
-
-export function SessionCounter({
-  remaining,
-  total,
-  isLoading,
-}: SessionCounterProps) {
-  const isLow = remaining < 3
-  const isEmpty = remaining === 0
-
-  if (isLoading) {
-    return (
-      <Badge variant="secondary" className="px-3 py-1.5">
-        <span className="w-16 h-4 bg-muted rounded" />
-      </Badge>
-    )
-  }
-
+export const SessionCounter = observer(() => {
   return (
     <Badge
       className={cn(
         'flex items-center gap-1.5 px-3 py-1.5',
-        isEmpty
-          ? 'bg-muted text-muted-foreground border-border'
-          : isLow
-          ? 'bg-primary/10 text-primary border-primary/20'
-          : 'bg-secondary text-foreground border-border'
+        () => {
+          const remaining = sessionCounterState$.remaining.get()
+          const isEmpty = remaining === 0
+          const isLow = remaining < 3
+          
+          return isEmpty
+            ? 'bg-muted text-muted-foreground border-border'
+            : isLow
+            ? 'bg-primary/10 text-primary border-primary/20'
+            : 'bg-secondary text-foreground border-border'
+        }
       )}
       variant="outline"
     >
@@ -51,8 +38,9 @@ export function SessionCounter({
         />
       </svg>
       <span className="font-medium tabular-nums">
-        {remaining}/{total} remaining
+        <Memo>{() => sessionCounterState$.remaining.get()}</Memo>/
+        <Memo>{() => sessionCounterState$.total.get()}</Memo> remaining
       </span>
     </Badge>
   )
-}
+})

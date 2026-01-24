@@ -140,7 +140,7 @@ function ResultsContent() {
                 </div>
                 <span className="font-bold text-foreground">AI Stickies</span>
               </Link>
-              <SessionCounter remaining={remainingGenerations} total={maxGenerations} isLoading={sessionLoading} />
+              <SessionCounter />
             </div>
           </div>
         </header>
@@ -199,7 +199,7 @@ function ResultsContent() {
               </div>
               <span className="font-bold text-foreground">AI Stickies</span>
             </Link>
-            <SessionCounter remaining={remainingGenerations} total={maxGenerations} isLoading={sessionLoading} />
+            <SessionCounter />
           </div>
         </div>
       </header>
