@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Stickies
 
-## Getting Started
+**Turn any selfie into personalized messaging stickers in seconds.**
 
-First, run the development server:
+AI Stickies lets anyone create custom sticker packs using generative AI—no artistic skills required. Upload a photo, pick a style, and get a complete sticker pack ready for LINE (and soon, other platforms).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Why Stickers?
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Messaging stickers are a $1B+ market hiding in plain sight. LINE alone generates $200M+ annually from stickers, with 1 billion+ sent daily across Asia. WhatsApp, WeChat, and KakaoTalk serve billions more users hungry for personal expression.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The problem? Creating stickers today requires illustration skills or expensive commissions. Existing AI image generators produce photorealistic outputs—not the cute, kawaii aesthetic that dominates sticker culture.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+AI Stickies bridges this gap: **Bitmoji-style personalization powered by state-of-the-art image generation.**
 
-## Learn More
+## The Opportunity
 
-To learn more about Next.js, take a look at the following resources:
+We're starting with LINE's 200M+ users in Japan, Taiwan, Thailand, and Indonesia. From there, we expand to:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **WhatsApp** (2B+ users)
+- **WeChat** (1.3B+ users)  
+- **KakaoTalk** (50M+ users in Korea)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Each platform has unique sticker formats and cultural preferences—but the core technology is the same. One generation engine, multiple distribution channels.
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Frontend:** Next.js 15, TypeScript, Tailwind CSS
+- **Backend:** Supabase (PostgreSQL + Storage)
+- **Image Generation:** Gemini Nano Banana, FLUX.2
+- **Prompt Optimization:** Fireworks AI (cost-effective LLM inference)
+- **Deployment:** Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Status
+
+MVP in development. See docs/specs.md for full product specifications.
