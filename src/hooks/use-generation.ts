@@ -1,15 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import type { Language, Provider, FidelityLevel } from '@/src/types/database'
-
-export interface GeneratedPreview {
-  id: string
-  styleName: string
-  fidelityLevel: FidelityLevel
-  description: string
-  previewUrl: string
-}
+import { useCallback } from 'react'
+import type { Language, Provider } from '@/src/types/database'
+import {
+  generationState$,
+  generationActions,
+  sessionActions,
+  type GeneratedPreview,
+} from '@/src/lib/state'
 
 interface GeneratePreviewsOptions {
   styleDescription?: string
@@ -24,51 +22,28 @@ interface GeneratePreviewsResponse {
   remainingGenerations: number
 }
 
-interface GenerationState {
-  isGenerating: boolean
-  generationId: string | null
-  previews: GeneratedPreview[]
-  error: string | null
-  progress: number
-  currentStyle: string | null
-}
-
 export function useGeneration() {
-  const [state, setState] = useState<GenerationState>({
-    isGenerating: false,
-    generationId: null,
-    previews: [],
-    error: null,
-    progress: 0,
-    currentStyle: null,
-  })
-
   const generatePreviews = useCallback(
     async (
       uploadId: string,
       options: GeneratePreviewsOptions
     ): Promise<GeneratePreviewsResponse | null> => {
-      setState({
-        isGenerating: true,
-        generationId: null,
-        previews: [],
-        error: null,
-        progress: 0,
-        currentStyle: 'Preparing...',
-      })
+      generationActions.startPreviewGeneration()
 
-      // Simulate progress updates
+      // Simulate progress updates using Legend State
       const progressInterval = setInterval(() => {
-        setState((prev) => {
-          if (prev.progress >= 90) return prev
-          const styles = ['High Fidelity', 'Stylized', 'Chibi', 'Abstract', 'Minimalist']
-          const styleIndex = Math.floor(prev.progress / 20)
-          return {
-            ...prev,
-            progress: Math.min(prev.progress + 5, 90),
-            currentStyle: styles[styleIndex] ?? 'Processing...',
-          }
-        })
+        const currentProgress = generationState$.progress.get()
+        if (currentProgress >= 90) {
+          clearInterval(progressInterval)
+          return
+        }
+
+        const styles = ['High Fidelity', 'Stylized', 'Chibi', 'Abstract', 'Minimalist']
+        const styleIndex = Math.floor(currentProgress / 20)
+        generationActions.updateProgress(
+          Math.min(currentProgress + 5, 90),
+          styles[styleIndex] ?? 'Processing...'
+        )
       }, 500)
 
       try {
@@ -92,26 +67,18 @@ export function useGeneration() {
 
         const data: GeneratePreviewsResponse = await response.json()
 
-        setState({
-          isGenerating: false,
-          generationId: data.generationId,
-          previews: data.previews,
-          error: null,
-          progress: 100,
-          currentStyle: null,
-        })
+        generationActions.setGenerationId(data.generationId)
+        generationActions.addPreviews(data.previews)
+        generationActions.updateProgress(100, undefined)
+
+        // Update session (optimistic update)
+        sessionActions.decrementGenerations()
 
         return data
       } catch (err) {
         clearInterval(progressInterval)
         const errorMessage = err instanceof Error ? err.message : 'Generation failed'
-        setState((prev) => ({
-          ...prev,
-          isGenerating: false,
-          error: errorMessage,
-          progress: 0,
-          currentStyle: null,
-        }))
+        generationActions.setError(errorMessage)
         return null
       }
     },
@@ -119,22 +86,23 @@ export function useGeneration() {
   )
 
   const reset = useCallback(() => {
-    setState({
-      isGenerating: false,
-      generationId: null,
-      previews: [],
-      error: null,
-      progress: 0,
-      currentStyle: null,
-    })
+    generationActions.reset()
   }, [])
 
   const clearError = useCallback(() => {
-    setState((prev) => ({ ...prev, error: null }))
+    generationActions.setError(null)
   }, [])
 
   return {
-    ...state,
+    // Expose state directly from observables
+    isGenerating: generationState$.isGenerating.get(),
+    generationId: generationState$.generationId.get(),
+    previews: generationState$.previews.get(),
+    error: generationState$.error.get(),
+    progress: generationState$.progress.get(),
+    currentStyle: generationState$.currentStyle.get(),
+    selectedStyleIds: generationState$.selectedStyleIds.get(),
+    stage: generationState$.stage.get(),
     generatePreviews,
     reset,
     clearError,
