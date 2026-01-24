@@ -1,6 +1,6 @@
 # AI Stickies - Parallel Build Plan
 
-**Target:** Production-ready LINE sticker generator in ~5 hours using parallel Claude Code subagents
+**Target:** Production-ready LINE sticker generator in ~5 hours using parallel coding agents
 
 ---
 

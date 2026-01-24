@@ -1,0 +1,61 @@
+'use client'
+
+import { Loader2, X } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+
+interface GenerationProgressProps {
+  progress: number
+  currentStyle: string | null
+  totalStyles?: number
+  onCancel?: () => void
+}
+
+export function GenerationProgress({
+  progress,
+  currentStyle,
+  totalStyles = 5,
+  onCancel,
+}: GenerationProgressProps) {
+  const currentIndex = Math.min(Math.floor((progress / 100) * totalStyles) + 1, totalStyles)
+
+  return (
+    <div className="w-full max-w-md mx-auto p-6 bg-card rounded-xl border border-border shadow-sm">
+      <div className="flex items-center justify-center mb-6">
+        <div className="size-16 rounded-full bg-secondary flex items-center justify-center">
+          <Loader2 className="size-8 text-primary animate-spin" />
+        </div>
+      </div>
+
+      <h3 className="text-lg font-semibold text-foreground text-center mb-2 text-balance">
+        Generating Previews
+      </h3>
+
+      <p className="text-sm text-muted-foreground text-center mb-6">
+        {currentStyle
+          ? `Creating ${currentStyle} style... (${currentIndex}/${totalStyles})`
+          : 'Preparing generation...'}
+      </p>
+
+      <Progress value={progress} className="mb-4" />
+
+      <p className="text-xs text-muted-foreground text-center mb-4 tabular-nums">
+        {progress}% complete
+      </p>
+
+      {onCancel && (
+        <div className="flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4 mr-1" />
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
