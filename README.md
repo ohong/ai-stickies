@@ -1,5 +1,7 @@
 # AI Stickies
 
+<video src="AI Stickies DEMO.mp4" controls width="100%"></video>
+
 **Turn any selfie into personalized messaging stickers in seconds.**
 
 AI Stickies lets anyone create custom sticker packs using generative AI—no artistic skills required. Upload a photo, pick a style, and get a complete sticker pack ready for LINE (and soon, other platforms).
