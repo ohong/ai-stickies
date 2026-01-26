@@ -382,7 +382,7 @@ export function Hero() {
       </div>
 
       {/* Floating Stickers */}
-      <div className="absolute inset-0 pointer-events-none select-none hidden md:block">
+      <div className="absolute inset-0 pointer-events-none select-none">
         {stickers.map((sticker) => (
           <div
             key={sticker.id}
