@@ -1,6 +1,6 @@
 # AI Stickies
 
-<video src="AI Stickies DEMO.mp4" controls width="100%"></video>
+![AI Stickies Demo](demo.gif)
 
 **Turn any selfie into personalized messaging stickers in seconds.**
 
