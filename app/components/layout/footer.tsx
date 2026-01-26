@@ -3,9 +3,9 @@ import { PageContainer } from "./page-container";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border py-12 bg-muted/30">
+    <footer className="border-t border-border py-8 md:py-12 bg-muted/30">
       <PageContainer>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
           <div className="flex items-center gap-2">
             <div className="size-6 rounded bg-primary flex items-center justify-center">
               <svg
@@ -22,10 +22,10 @@ export function Footer() {
                 />
               </svg>
             </div>
-            <span className="font-semibold text-foreground">AI Stickies</span>
+            <span className="font-semibold text-foreground text-sm md:text-base">AI Stickies</span>
           </div>
 
-          <div className="flex items-center gap-8 text-sm text-muted-foreground">
+          <div className="flex items-center gap-6 md:gap-8 text-xs md:text-sm text-muted-foreground">
             <Link href="#" className="hover:text-foreground focus:outline-none focus-visible:text-foreground focus-visible:underline focus-visible:underline-offset-4">
               Terms
             </Link>
@@ -37,7 +37,7 @@ export function Footer() {
             </Link>
           </div>
 
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-muted-foreground">
             {new Date().getFullYear()} AI Stickies
           </p>
         </div>

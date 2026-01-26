@@ -4,16 +4,18 @@ import Image from "next/image";
 // Define sticker data for better management and randomization
 // Divided into 3 Phases (approx 7 stickers each) to reduce crowding
 // Cycle time: 12s. Phase 1: ~0s, Phase 2: ~4s, Phase 3: ~8s
+// hideOnMobile: true = hidden on screens < 768px
 const stickers = [
   // --- PHASE 1 (Starts ~0s) ---
   {
     id: 1,
     label: "Chibi Girl",
-    top: "15%",
-    left: "5%",
+    top: "8%",
+    left: "2%",
     rotate: "-15deg",
     cycleDelay: "0s",
-    size: "w-32 h-32 lg:w-40 lg:h-40",
+    size: "w-20 h-20 md:w-32 md:h-32 lg:w-40 lg:h-40",
+    hideOnMobile: false,
     content: (
       <div className="relative w-full h-full drop-shadow-md transition-transform hover:scale-110">
         <Image
@@ -21,7 +23,7 @@ const stickers = [
           alt="Chibi Girl Sticker"
           fill
           className="object-contain"
-          sizes="(max-width: 768px) 128px, 160px"
+          sizes="(max-width: 768px) 80px, 160px"
         />
       </div>
     )
@@ -33,7 +35,8 @@ const stickers = [
     left: "2%",
     rotate: "-28deg",
     cycleDelay: "0.2s",
-    size: "w-44 h-44 lg:w-60 lg:h-60",
+    size: "w-24 h-24 md:w-44 md:h-44 lg:w-60 lg:h-60",
+    hideOnMobile: false,
     content: (
       <div className="relative w-full h-full drop-shadow-md transition-transform hover:scale-110">
         <Image
@@ -41,7 +44,7 @@ const stickers = [
           alt="Minimalist Sticker"
           fill
           className="object-contain"
-          sizes="(max-width: 768px) 176px, 240px"
+          sizes="(max-width: 768px) 96px, 240px"
         />
       </div>
     )
@@ -49,11 +52,12 @@ const stickers = [
   {
     id: 8,
     label: "High Fidelity Dog",
-    top: "15%",
-    right: "5%",
+    top: "8%",
+    right: "2%",
     rotate: "18deg",
     cycleDelay: "0.4s",
-    size: "w-28 h-28 lg:w-36 lg:h-36",
+    size: "w-16 h-16 md:w-28 md:h-28 lg:w-36 lg:h-36",
+    hideOnMobile: false,
     content: (
       <div className="relative w-full h-full drop-shadow-sm transition-transform hover:scale-110">
         <Image
@@ -61,7 +65,7 @@ const stickers = [
           alt="High Fidelity Dog Sticker"
           fill
           className="object-contain"
-          sizes="(max-width: 768px) 112px, 144px"
+          sizes="(max-width: 768px) 64px, 144px"
         />
       </div>
     )
@@ -69,11 +73,12 @@ const stickers = [
   {
     id: 12,
     label: "Abstract Idea",
-    bottom: "15%",
-    right: "8%",
+    bottom: "12%",
+    right: "2%",
     rotate: "32deg",
     cycleDelay: "0.6s",
-    size: "w-24 h-24 lg:w-28 lg:h-28",
+    size: "w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28",
+    hideOnMobile: false,
     content: (
       <div className="relative w-full h-full drop-shadow-sm transition-transform hover:scale-110">
         <Image
@@ -81,7 +86,7 @@ const stickers = [
           alt="Abstract Idea Sticker"
           fill
           className="object-contain"
-          sizes="(max-width: 768px) 96px, 112px"
+          sizes="(max-width: 768px) 64px, 112px"
         />
       </div>
     )
@@ -94,6 +99,7 @@ const stickers = [
     rotate: "12deg",
     cycleDelay: "0.8s",
     size: "w-28 h-28 lg:w-36 lg:h-36",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-sm transition-transform hover:scale-110">
         <Image
@@ -114,6 +120,7 @@ const stickers = [
     rotate: "-10deg",
     cycleDelay: "1.0s",
     size: "w-32 h-32 lg:w-40 lg:h-40",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-md transition-transform hover:scale-110">
         <Image
@@ -136,6 +143,7 @@ const stickers = [
     rotate: "15deg",
     cycleDelay: "4.0s",
     size: "w-40 h-40 lg:w-52 lg:h-52",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-md transition-transform hover:scale-110">
         <Image
@@ -156,6 +164,7 @@ const stickers = [
     rotate: "-22deg",
     cycleDelay: "4.2s",
     size: "w-36 h-36 lg:w-44 lg:h-44",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-md transition-transform hover:scale-110">
         <Image
@@ -176,6 +185,7 @@ const stickers = [
     rotate: "-25deg",
     cycleDelay: "4.4s",
     size: "w-32 h-32 lg:w-40 lg:h-40",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-lg transition-transform hover:scale-110">
         <Image
@@ -196,6 +206,7 @@ const stickers = [
     rotate: "-12deg",
     cycleDelay: "4.6s",
     size: "w-36 h-36 lg:w-48 lg:h-48",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-md transition-transform hover:scale-110">
         <Image
@@ -216,6 +227,7 @@ const stickers = [
     rotate: "8deg",
     cycleDelay: "4.8s",
     size: "w-24 h-24 lg:w-32 lg:h-32",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-sm transition-transform hover:scale-110">
         <Image
@@ -236,6 +248,7 @@ const stickers = [
     rotate: "20deg",
     cycleDelay: "5.0s",
     size: "w-32 h-32 lg:w-40 lg:h-40",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-lg transition-transform hover:scale-110">
         <Image
@@ -258,6 +271,7 @@ const stickers = [
     rotate: "-15deg",
     cycleDelay: "8.0s",
     size: "w-48 h-48 lg:w-64 lg:h-64",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-lg transition-transform hover:scale-110">
         <Image
@@ -278,6 +292,7 @@ const stickers = [
     rotate: "-20deg",
     cycleDelay: "8.2s",
     size: "w-36 h-36 lg:w-48 lg:h-48",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-xl transition-transform hover:scale-110">
         <Image
@@ -298,6 +313,7 @@ const stickers = [
     rotate: "42deg",
     cycleDelay: "8.4s",
     size: "w-20 h-20 lg:w-24 lg:h-24",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-sm transition-transform hover:scale-110">
         <Image
@@ -318,6 +334,7 @@ const stickers = [
     rotate: "25deg",
     cycleDelay: "8.6s",
     size: "w-40 h-40 lg:w-52 lg:h-52",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-lg transition-transform hover:scale-110">
         <Image
@@ -338,6 +355,7 @@ const stickers = [
     rotate: "-5deg",
     cycleDelay: "8.8s",
     size: "w-32 h-32 lg:w-44 lg:h-44",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-transform hover:scale-110">
         <Image
@@ -358,6 +376,7 @@ const stickers = [
     rotate: "15deg",
     cycleDelay: "9.0s",
     size: "w-28 h-28 lg:w-36 lg:h-36",
+    hideOnMobile: true,
     content: (
       <div className="relative w-full h-full drop-shadow-md transition-transform hover:scale-110">
         <Image
@@ -386,17 +405,16 @@ export function Hero() {
         {stickers.map((sticker) => (
           <div
             key={sticker.id}
-            className="absolute animate-pop-cycle opacity-0" // Start hidden, animation controls opacity
+            className={`absolute animate-pop-cycle opacity-0 ${sticker.hideOnMobile ? 'hidden md:block' : ''}`}
             style={{
               top: sticker.top,
               left: sticker.left,
               right: sticker.right,
               bottom: sticker.bottom,
-              animationDelay: sticker.cycleDelay, // Staggered start times for the cycle
+              animationDelay: sticker.cycleDelay,
             }}
           >
-            {/* Inner div for rotation only - removed float animation */}
-            <div 
+            <div
               className={`${sticker.size}`}
               style={{
                 transform: `rotate(${sticker.rotate})`,

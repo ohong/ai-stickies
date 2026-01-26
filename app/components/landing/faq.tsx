@@ -35,37 +35,37 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 bg-[#F8F9FA]">
+    <section id="faq" className="py-16 md:py-24 bg-[#F8F9FA]">
       <div className="max-w-3xl mx-auto px-4">
-        <div className="text-center mb-16">
-          <span className="text-[#09C754] font-bold text-sm uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
+        <div className="text-center mb-10 md:mb-16">
+          <span className="text-[#09C754] font-bold text-xs md:text-sm uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
             FAQ
           </span>
-          <h2 className="mt-6 text-3xl md:text-5xl font-black text-foreground text-balance">
+          <h2 className="mt-4 md:mt-6 text-2xl md:text-5xl font-black text-foreground text-balance">
             Frequently asked questions
           </h2>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           {faqs.map((faq, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm transition-shadow hover:shadow-md">
+            <div key={i} className="bg-white rounded-xl md:rounded-2xl border border-gray-100 overflow-hidden shadow-sm transition-shadow hover:shadow-md">
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full py-6 px-6 flex items-center justify-between text-left focus:outline-none"
+                className="w-full py-4 md:py-6 px-4 md:px-6 flex items-center justify-between text-left focus:outline-none"
                 aria-expanded={openIndex === i}
               >
-                <span className="font-bold text-lg text-foreground pr-8">
+                <span className="font-bold text-sm md:text-lg text-foreground pr-4 md:pr-8">
                   {faq.question}
                 </span>
                 <div
                   className={cn(
-                    "size-8 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0 transition-colors duration-200",
+                    "size-7 md:size-8 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0 transition-colors duration-200",
                     openIndex === i && "bg-[#09C754] border-[#09C754] text-white"
                   )}
                 >
                   <svg
                     className={cn(
-                      "size-4 transition-transform duration-200",
+                      "size-3.5 md:size-4 transition-transform duration-200",
                       openIndex === i ? "transform rotate-180" : "text-gray-400"
                     )}
                     fill="none"
@@ -81,14 +81,14 @@ export function FAQ() {
                   </svg>
                 </div>
               </button>
-              <div 
+              <div
                 className={cn(
-                  "px-6 grid transition-all duration-300 ease-in-out",
-                  openIndex === i ? "grid-rows-[1fr] pb-6 opacity-100" : "grid-rows-[0fr] pb-0 opacity-0"
+                  "px-4 md:px-6 grid transition-all duration-300 ease-in-out",
+                  openIndex === i ? "grid-rows-[1fr] pb-4 md:pb-6 opacity-100" : "grid-rows-[0fr] pb-0 opacity-0"
                 )}
               >
                 <div className="overflow-hidden">
-                  <p className="text-muted-foreground leading-relaxed text-pretty">
+                  <p className="text-muted-foreground leading-relaxed text-pretty text-sm md:text-base">
                     {faq.answer}
                   </p>
                 </div>

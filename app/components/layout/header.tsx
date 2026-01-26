@@ -62,7 +62,7 @@ export function Header() {
 
           <Link
             href="/create"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-5 py-2 rounded-full text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-4 md:px-5 py-2 rounded-full text-xs md:text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             Get Started
           </Link>
