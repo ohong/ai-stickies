@@ -5,15 +5,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  ImageUploader,
-  ImagePreview,
-  StyleInput,
-  ContextInput,
-  LanguageSelect,
-  SessionCounter,
-} from '@/app/components/create'
-import { GenerationProgress } from '@/src/components/styles'
+import { ImageUploader } from '@/app/components/create/image-uploader'
+import { ImagePreview } from '@/app/components/create/image-preview'
+import { StyleInput } from '@/app/components/create/style-input'
+import { ContextInput } from '@/app/components/create/context-input'
+import { LanguageSelect } from '@/app/components/create/language-select'
+import { SessionCounter } from '@/app/components/create/session-counter'
+import { GenerationProgress } from '@/src/components/styles/generation-progress'
 import { useUpload } from '@/src/hooks/use-upload'
 import { useSession } from '@/src/hooks/use-session'
 import { useGeneration } from '@/src/hooks/use-generation'

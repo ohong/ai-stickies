@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Clock, Package, Loader2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SessionCounter } from '@/app/components/create'
+import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
 
 interface HistoryItem {

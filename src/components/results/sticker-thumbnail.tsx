@@ -20,15 +20,20 @@ export function StickerThumbnail({
   const [isHovered, setIsHovered] = useState(false)
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label={`View ${emotion || 'sticker'} details`}
       className={cn(
         'relative aspect-square rounded-xl overflow-hidden cursor-pointer',
         'bg-secondary border border-border',
-        'hover:border-primary'
+        'hover:border-primary',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
       )}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsHovered(true)}
+      onBlur={() => setIsHovered(false)}
     >
       {!isLoaded && (
         <div className="absolute inset-0 bg-muted" />
@@ -37,6 +42,8 @@ export function StickerThumbnail({
       <img
         src={imageUrl}
         alt={emotion || 'Sticker'}
+        width={370}
+        height={320}
         className={cn(
           'w-full h-full object-cover',
           isLoaded ? 'opacity-100' : 'opacity-0'
@@ -57,7 +64,7 @@ export function StickerThumbnail({
           </div>
         </div>
       )}
-    </div>
+    </button>
   )
 }
 

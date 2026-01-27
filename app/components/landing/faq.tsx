@@ -50,16 +50,19 @@ export function FAQ() {
           {faqs.map((faq, i) => (
             <div key={i} className="bg-white rounded-xl md:rounded-2xl border border-gray-100 overflow-hidden shadow-sm transition-shadow hover:shadow-md">
               <button
+                id={`faq-question-${i}`}
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full py-4 md:py-6 px-4 md:px-6 flex items-center justify-between text-left focus:outline-none"
+                className="w-full py-4 md:py-6 px-4 md:px-6 flex items-center justify-between text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                 aria-expanded={openIndex === i}
+                aria-controls={`faq-answer-${i}`}
               >
                 <span className="font-bold text-sm md:text-lg text-foreground pr-4 md:pr-8">
                   {faq.question}
                 </span>
                 <div
+                  aria-hidden="true"
                   className={cn(
-                    "size-7 md:size-8 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0 transition-colors duration-200",
+                    "size-7 md:size-8 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0 transition-[background-color,border-color,color] duration-200",
                     openIndex === i && "bg-[#09C754] border-[#09C754] text-white"
                   )}
                 >
@@ -82,8 +85,11 @@ export function FAQ() {
                 </div>
               </button>
               <div
+                id={`faq-answer-${i}`}
+                role="region"
+                aria-labelledby={`faq-question-${i}`}
                 className={cn(
-                  "px-4 md:px-6 grid transition-all duration-300 ease-in-out",
+                  "px-4 md:px-6 grid transition-[grid-template-rows,padding,opacity] duration-300 ease-in-out",
                   openIndex === i ? "grid-rows-[1fr] pb-4 md:pb-6 opacity-100" : "grid-rows-[0fr] pb-0 opacity-0"
                 )}
               >

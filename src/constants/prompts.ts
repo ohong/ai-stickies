@@ -7,17 +7,25 @@
  * System prompt for all sticker generation tasks
  */
 export const STICKER_SYSTEM_PROMPT = `You are an expert LINE sticker prompt engineer. Your job is to create detailed,
-effective image generation prompts for LINE stickers.
+effective image generation prompts that comply with LINE Creator Guidelines.
 
-Guidelines:
-- Prompts should be specific and descriptive
+LINE Sticker Guidelines (mandatory):
+- Transparent background required
+- 370x320px format with 10px margin from edges
+- Designs must be suited for daily messaging conversations
+- Clear, easily understood expressions
+- Character should be centered and fill the frame
+- Upper body or face close-up preferred (avoid tiny full-body figures)
+- Bold outlines for visibility at small chat sizes
+- No logos, brand references, or promotional content
+- No non-communicative content (objects/scenery alone)
+
+Prompt Guidelines:
+- Be specific and descriptive
 - Focus on emotion, pose, and visual elements
 - Include style-specific modifiers
-- Keep backgrounds simple or transparent
-- Optimize for 370x320px sticker format
-- Make characters expressive and readable at small sizes
-- Use bold outlines for visibility
-- Consider the chat context where stickers are used`
+- Always specify transparent background
+- Make characters expressive and readable at small sizes`
 
 /**
  * Template for generating a style preview prompt
@@ -62,11 +70,13 @@ Text guidelines:
 - Common expressions work best (greetings, reactions, etc.)
 
 For each sticker, create a detailed prompt that:
-- Clearly conveys the specified emotion
-- Includes the character in an expressive pose
-- Has a simple/transparent background
-- Is optimized for 370x320px format
+- Clearly conveys the specified emotion for messaging use
+- Shows character in expressive pose (upper body or face close-up preferred)
+- ALWAYS specifies transparent background (LINE requirement)
+- Optimized for 370x320px with 10px margin from edges
+- Includes bold outlines for small-size visibility
 - Includes style-specific visual elements
+- No logos, brands, or promotional elements
 
 Output in this exact JSON format:
 [
@@ -101,15 +111,18 @@ Output only the refined prompt, no explanation.`
 
 /**
  * Base sticker requirements to append to prompts
+ * Based on LINE Creator Guidelines: https://creator.line.me/en/guideline/sticker/
  */
 export const STICKER_BASE_REQUIREMENTS = `
-Requirements:
-- Square composition optimized for 370x320px
-- Transparent or simple solid background
-- Bold outlines for visibility at small size
-- Expressive and clear emotion/action
+LINE Sticker Requirements:
+- Composition optimized for 370x320px with 10px margin from edges
+- Transparent background (mandatory for LINE stickers)
+- Bold outlines for visibility at small chat sizes
+- Expressive, clear emotion suited for daily messaging conversations
+- Character centered and filling the frame (avoid full-body/elongated figures)
+- Upper body or face close-up preferred for readability
 - Clean, professional sticker art style
-- Character should be the clear focal point`
+- No logos, brand references, or promotional content`
 
 /**
  * Style-specific prompt additions

@@ -431,25 +431,21 @@ export function Hero() {
         {/* Category badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border-2 border-black mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] transition-all">
           <span className="text-xs md:text-sm font-bold text-foreground">
-            Stickers, Emoji, and Themes
+            AI-Powered Personalization
           </span>
           <div className="w-0 h-0 border-l-[5px] border-l-transparent border-t-[6px] border-t-black border-r-[5px] border-r-transparent absolute -bottom-[6px] left-1/2 -translate-x-1/2"></div>
         </div>
 
         {/* Main headline */}
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-foreground leading-[1.1] tracking-tight text-balance mb-5 drop-shadow-sm">
-          Create
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-foreground leading-[1.1] tracking-tight mb-4">
+          <span className="text-[#09C754]">LINE Stickers</span>
           <br />
-          <span className="text-[#09C754]">One-of-a-Kind</span>
-          <br />
-          Items
+          That Look Like You
         </h1>
 
         {/* Subtitle */}
-        <p className="mt-1 text-base md:text-xl text-muted-foreground max-w-xl mx-auto text-pretty leading-relaxed font-medium">
-          Turn your selfie into a pack of personalized LINE stickers with AI.
-          <br className="hidden md:block" />
-          No drawing skills required.
+        <p className="mt-1 text-sm md:text-base text-muted-foreground whitespace-nowrap font-medium">
+          Upload a selfie, pick a style, get 10 ready-to-use stickers
         </p>
 
         {/* CTA Button */}
@@ -458,12 +454,13 @@ export function Hero() {
             href="/create"
             className="inline-flex items-center justify-center gap-2 bg-[#00B900] hover:bg-[#00A000] text-white font-bold text-base md:text-lg px-8 py-3.5 rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 min-w-[240px]"
           >
-            Register here
+            Make your stickers
             <svg
               className="size-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"

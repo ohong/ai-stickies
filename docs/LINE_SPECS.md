@@ -1,192 +1,70 @@
-# LINE Sticker Specifications
+# LINE Sticker Specs
 
-Quick reference for LINE sticker technical requirements.
-
-**Source**: [LINE Creators Market Guidelines](https://creator.line.me)
+**Source**: [creator.line.me/en/guideline/sticker](https://creator.line.me/en/guideline/sticker/)
 
 ## Image Requirements
 
-| Asset | Dimensions | Max Size | Format | Required |
-|-------|------------|----------|--------|----------|
-| **Stickers** | W 370 × H 320 px (max) | 500 KB | PNG | Yes (8-40 per pack) |
-| Main Image | 240 × 240 px | 1 MB | PNG | Yes (1) |
-| Tab Image (ON) | 96 × 74 px | 1 MB | PNG | Yes (1) |
-| Tab Image (OFF) | 96 × 74 px | 1 MB | PNG | Optional |
+| Asset | Dimensions | Max Size | Notes |
+|-------|------------|----------|-------|
+| Stickers | ≤370×320px | 1MB | 8/16/24/32/40 per pack |
+| Main | 240×240px | 1MB | Required (1) |
+| Tab | 96×74px | 1MB | Required (1) |
 
-## Sticker Technical Requirements
+**Technical**:
+- PNG only, RGB, min 72dpi
+- **Transparent background required**
+- **10px margin** between content and image edge
+- Width/height must be **even numbers** (for auto-resize)
+- ZIP limit: 60MB
 
-### Dimensions
-- **Width**: Maximum 370 pixels
-- **Height**: Maximum 320 pixels
-- Aspect ratio: Flexible within max bounds
-- Recommended: Use full 370×320 for best quality
+## Design Guidelines
 
-### File Format
-- **Format**: PNG only
-- **Transparency**: Required (transparent background)
-- **Color**: RGB or RGBA
-- **Bit depth**: 24-bit (RGB) or 32-bit (RGBA)
+**Required**:
+- Designs suited for **daily conversations/messaging**
+- **Clear, easily understood** expressions
+- Expressive poses visible at small sizes
+- Character should be centered and fill frame
 
-### File Size
-- **Maximum**: 500 KB per sticker
-- **Recommended**: 200-300 KB for good quality/size balance
-- **Optimization**: Use PNG compression (AI Stickies handles this automatically)
+**Avoid**:
+- Non-communicative content (objects/scenery alone)
+- Poor visibility (elongated/full-body figures too small)
+- Minimal variety (monochromatic or number-only sets)
+- Offensive, violent, sexual, or nationalist content
 
-### Naming Convention
-- `01.png`, `02.png`, ..., `40.png`
-- Sequential numbering with leading zeros
-- Main: `main.png` (first sticker or representative image)
-- Tab: `tab.png` or `tab_on.png`, `tab_off.png`
+## Prohibited Content
 
-### Content Guidelines
-- **Background**: Must be transparent
-- **Margins**: Not required (LINE adds automatically)
-- **Character**: Should be centered and clearly visible
-- **Style**: Cute, kawaii, expressive (recommended)
-- **Text**: Minimal or none (stickers are visual communication)
+- Advertisements or corporate logos
+- Requests for personal data/IDs
+- References to other internet services/messaging apps
+- Copyrighted characters (without license)
+- Real people (without permission)
 
-## Pack Requirements
+## Text Limits
 
-### Quantity
-- **Minimum**: 8 stickers per pack
-- **Maximum**: 40 stickers per pack
-- **Recommended**: 16-24 stickers (good variety without overwhelming)
-- **AI Stickies default**: 10 stickers per pack
+| Field | Limit |
+|-------|-------|
+| Title | 40 chars |
+| Description | 160 chars |
+| Creator | 50 chars |
+| Copyright | 50 chars |
 
-### ZIP Structure
-For bulk upload to LINE:
+*Asian characters count as 2*
+
+## ZIP Structure
+
 ```
-sticker-pack.zip
-├── main.png          (240×240, < 1MB)
-├── tab.png           (96×74, < 1MB)
-├── 01.png            (370×320, < 500KB)
+pack.zip
+├── main.png      (240×240)
+├── tab.png       (96×74)
+├── 01.png        (≤370×320)
 ├── 02.png
-├── 03.png
-...
-└── 40.png
+└── ...
 ```
 
-### ZIP Requirements
-- **Total size**: < 20 MB
-- **Format**: Standard ZIP compression
-- **Structure**: Flat (no subdirectories)
+## AI Stickies Compliance
 
-## AI Stickies Implementation
-
-Our platform automatically handles all LINE requirements:
-
-✅ **Dimensions**: Resizes to 370×320px exactly
-✅ **Format**: Outputs PNG with transparency
-✅ **File size**: Compresses to < 300KB (well under 500KB limit)
-✅ **Background**: Removes background, adds transparency
-✅ **Naming**: Sequential 01.png, 02.png, etc.
-✅ **ZIP**: Proper structure for LINE submission
-
-## Submission Process
-
-### 1. Register
-- Go to [creator.line.me](https://creator.line.me)
-- Create account with email
-- Complete creator profile
-- Add payment information (for royalties)
-
-### 2. Create Submission
-- Click "Register New Stickers"
-- Choose "Sticker" (not "Animated" or "Popup")
-- Select language and region
-
-### 3. Upload Details
-- **Title**: Pack name (max 40 characters)
-- **Description**: What the stickers express
-- **Tags**: Search keywords (max 5)
-- **Category**: Choose appropriate category
-- **Language**: Match your sticker text/audience
-
-### 4. Upload Images
-- **Option A**: Individual files (drag & drop)
-- **Option B**: ZIP file (faster for many stickers)
-- Upload main image (240×240)
-- Upload tab images (96×74)
-
-### 5. Set Pricing
-- Free (no revenue)
-- $0.99 USD equivalent
-- $1.99 USD equivalent
-- $2.99 USD equivalent
-- $3.99 USD equivalent
-
-### 6. Submit for Review
-- LINE reviews for:
-  - Technical compliance (auto-checked)
-  - Content policy (no prohibited content)
-  - Quality standards (clear, expressive)
-- **Review time**: Up to 30 days (typically 7-14 days)
-
-### 7. Release
-- Approved stickers go live in LINE Store
-- You receive notification email
-- Share link with friends or promote
-
-## Content Policy
-
-### Allowed
-✅ Original characters
-✅ Self-portraits and personal photos (with consent)
-✅ Cute, expressive, positive emotions
-✅ Multiple styles and aesthetics
-✅ Minimal text in various languages
-
-### Prohibited
-❌ Copyrighted characters (without license)
-❌ Trademarked logos or brands
-❌ Real people (without permission)
-❌ Offensive, violent, or adult content
-❌ Misleading or spam content
-❌ Low-quality or pixelated images
-
-## Quality Guidelines
-
-### Visual Quality
-- **Clarity**: Sharp, not pixelated
-- **Contrast**: Character stands out from background
-- **Consistency**: Similar style across pack
-- **Expression**: Clear emotional intent
-
-### Character Design
-- **Recognizable**: Consistent features
-- **Expressive**: Clear emotions (happy, sad, surprised, etc.)
-- **Centered**: Main subject in middle of frame
-- **Sized**: Character fills most of the canvas
-
-### Pack Coherence
-- **Theme**: Unified concept or character
-- **Style**: Consistent art style
-- **Color palette**: Harmonious colors
-- **Variety**: Different emotions/situations
-
-## Testing Checklist
-
-Before submitting to LINE, verify:
-
-- [ ] All stickers are 370×320px
-- [ ] All files are < 500KB
-- [ ] Background is transparent
-- [ ] PNG format with RGBA
-- [ ] Files named 01.png through NN.png
-- [ ] Main image is 240×240px
-- [ ] Tab images are 96×74px
-- [ ] ZIP is < 20MB
-- [ ] No copyrighted content
-- [ ] Clear, expressive emotions
-- [ ] Consistent style across pack
-
-## Resources
-
-- **Creator Portal**: https://creator.line.me
-- **Guidelines**: https://creator.line.me/en/guideline/
-- **FAQ**: https://creator.line.me/en/faq/
-- **Revenue Guide**: https://creator.line.me/en/revenue/
-
-## Full Specs
-
-For complete product requirements, see `docs/specs.md`
+✅ Outputs 370×320px PNG with transparency
+✅ 10px content margin enforced
+✅ Bold outlines for small-size visibility
+✅ Conversation-appropriate expressions
+✅ Proper ZIP structure for submission

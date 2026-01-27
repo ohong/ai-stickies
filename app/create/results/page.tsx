@@ -5,17 +5,14 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Sparkles, Store, Loader2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SessionCounter } from '@/app/components/create'
+import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
 import { useDownload } from '@/src/hooks/use-download'
-import {
-  StickerPackCard,
-  StickerPackCardSkeleton,
-  StickerModal,
-  DownloadAllButton,
-  MarketplaceExportModal,
-  Confetti,
-} from '@/src/components/results'
+import { StickerPackCard, StickerPackCardSkeleton } from '@/src/components/results/sticker-pack-card'
+import { StickerModal } from '@/src/components/results/sticker-modal'
+import { DownloadAllButton } from '@/src/components/results/download-buttons'
+import { MarketplaceExportModal } from '@/src/components/results/marketplace-export-modal'
+import { Confetti } from '@/src/components/results/confetti'
 
 interface StickerData {
   id: string

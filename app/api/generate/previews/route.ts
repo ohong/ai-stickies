@@ -89,21 +89,22 @@ export async function POST(
       )
     }
 
-    // Generate style previews
-    const result = await generateStylePreviews({
-      sessionId,
-      uploadId: body.uploadId,
-      storagePath: upload.storage_path,
-      styleDescription: body.styleDescription,
-      personalContext: body.personalContext,
-      language: body.language,
-      provider: body.provider,
-    })
+    // Generate style previews and increment count in parallel
+    // (increment doesn't depend on result, only needs sessionId)
+    const [result] = await Promise.all([
+      generateStylePreviews({
+        sessionId,
+        uploadId: body.uploadId,
+        storagePath: upload.storage_path,
+        styleDescription: body.styleDescription,
+        personalContext: body.personalContext,
+        language: body.language,
+        provider: body.provider,
+      }),
+      incrementGenerationCount(sessionId),
+    ])
 
-    // Increment generation count
-    await incrementGenerationCount(sessionId)
-
-    // Get updated remaining count
+    // Get updated remaining count after increment
     const updatedRateLimit = await checkRateLimit(sessionId)
 
     return NextResponse.json({

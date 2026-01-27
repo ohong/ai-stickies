@@ -43,6 +43,17 @@ export function ImageUploader({
     inputRef.current?.click()
   }, [disabled, isUploading])
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disabled || isUploading) return
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        inputRef.current?.click()
+      }
+    },
+    [disabled, isUploading]
+  )
+
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
@@ -60,14 +71,20 @@ export function ImageUploader({
 
   return (
     <div
+      role="button"
+      tabIndex={disabled || isUploading ? -1 : 0}
+      aria-label="Upload photo. Drop file here or press Enter to browse"
+      aria-disabled={disabled || isUploading}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       className={cn(
         'relative flex flex-col items-center justify-center',
         'w-full min-h-[280px] p-8',
         'border-2 border-dashed rounded-xl',
         'cursor-pointer',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         disabled || isUploading
           ? 'border-muted bg-muted/50 cursor-not-allowed'
           : 'border-border bg-secondary/50 hover:border-primary hover:bg-secondary'
@@ -83,18 +100,18 @@ export function ImageUploader({
       />
 
       {isUploading ? (
-        <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+        <div className="flex flex-col items-center gap-4 w-full max-w-xs" aria-live="polite">
           <div className="size-16 rounded-full bg-secondary flex items-center justify-center">
-            <Upload className="size-8 text-primary" />
+            <Upload className="size-8 text-primary" aria-hidden="true" />
           </div>
-          <p className="text-sm font-medium text-foreground">Uploading...</p>
+          <p className="text-sm font-medium text-foreground">Uploading…</p>
           <Progress value={uploadProgress} className="w-full" />
           <p className="text-xs text-muted-foreground tabular-nums">{uploadProgress}%</p>
         </div>
       ) : (
         <>
           <div className="size-20 rounded-full bg-secondary flex items-center justify-center mb-4">
-            <ImageIcon className="size-10 text-primary" />
+            <ImageIcon className="size-10 text-primary" aria-hidden="true" />
           </div>
           <p className="text-lg font-medium text-foreground mb-2">
             Drop your photo here

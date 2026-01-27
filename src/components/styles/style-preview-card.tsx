@@ -25,9 +25,21 @@ export function StylePreviewCard({
 }: StylePreviewCardProps) {
   return (
     <Card
+      role="checkbox"
+      aria-checked={isSelected}
+      aria-label={`${styleName} style${isSelected ? ' (selected)' : ''}`}
+      tabIndex={isLoading ? -1 : 0}
       onClick={() => !isLoading && onToggle(id)}
+      onKeyDown={(e) => {
+        if (isLoading) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onToggle(id)
+        }
+      }}
       className={cn(
         'relative overflow-hidden cursor-pointer',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         isSelected
           ? 'ring-2 ring-primary ring-offset-2 bg-secondary/50'
           : 'hover:ring-1 hover:ring-border',
@@ -55,7 +67,10 @@ export function StylePreviewCard({
           <img
             src={previewUrl}
             alt={`${styleName} preview`}
+            width={300}
+            height={300}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

@@ -5,13 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  StylePreviewCard,
-  SelectionSummary,
-  GenerationProgress,
-  StylePreviewGridSkeleton,
-} from '@/src/components/styles'
-import { SessionCounter } from '@/app/components/create'
+import { StylePreviewCard } from '@/src/components/styles/style-preview-card'
+import { SelectionSummary } from '@/src/components/styles/selection-summary'
+import { GenerationProgress } from '@/src/components/styles/generation-progress'
+import { StylePreviewGridSkeleton } from '@/src/components/styles/style-preview-skeleton'
+import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
 import { useStyleSelection } from '@/src/hooks/use-style-selection'
 import type { GeneratedPreview } from '@/src/hooks/use-generation'

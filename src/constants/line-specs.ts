@@ -8,8 +8,9 @@ export const LINE_SPECS = {
   sticker: {
     maxWidth: 370,
     maxHeight: 320,
-    maxSizeKB: 500,
+    maxSizeKB: 1000, // 1MB per official guidelines
     format: 'png' as const,
+    marginPx: 10, // Required margin between content and image edge
   },
   main: {
     width: 240,

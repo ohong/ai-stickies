@@ -152,15 +152,23 @@ export async function generatePreviewPrompt(
 
 function buildSystemPrompt(): string {
   return `You are an expert LINE sticker prompt engineer. Your job is to create detailed,
-effective image generation prompts for LINE stickers.
+effective image generation prompts that comply with LINE Creator Guidelines.
 
-Guidelines:
-- Prompts should be specific and descriptive
+LINE Sticker Requirements (mandatory):
+- Transparent background (required for LINE stickers)
+- 370x320px format with 10px margin from edges
+- Designs suited for daily messaging conversations
+- Clear, easily understood expressions
+- Character centered and filling the frame
+- Upper body or face close-up preferred (avoid tiny full-body figures)
+- Bold outlines for visibility at small chat sizes
+- No logos, brands, or promotional content
+
+Prompt Guidelines:
+- Be specific and descriptive
 - Focus on emotion, pose, and visual elements
 - Include style-specific modifiers
-- Keep backgrounds simple or transparent
-- Optimize for 370x320px sticker format
-- Make characters expressive and readable at small sizes`
+- Always specify transparent background`
 }
 
 function buildPreviewPromptUserMessage(
@@ -178,6 +186,11 @@ Character description: ${photoDescription}
 ${personalContext ? `Personal context: ${personalContext}` : ''}
 
 Generate a prompt for a friendly, neutral expression sticker that showcases this style.
+Requirements:
+- Transparent background (mandatory)
+- Character centered, upper body or face close-up
+- 10px margin from edges
+- Bold outlines for small-size visibility
 The prompt should be a single paragraph, ready to use with an image generation model.
 Only output the prompt itself, no explanation.`
 }
@@ -210,6 +223,13 @@ Text guidelines:
 - About 40% can include short text (1-3 words max)
 - Text must be in ${textLanguage}
 - Text should match the emotion
+
+Image guidelines (LINE requirements):
+- ALWAYS specify transparent background
+- Character centered, upper body or face close-up (avoid tiny full-body)
+- 10px margin from edges
+- Bold outlines for small chat visibility
+- Suited for daily messaging conversations
 
 For each sticker, output in this exact JSON format:
 [

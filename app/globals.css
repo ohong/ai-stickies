@@ -167,3 +167,31 @@ body {
 .animate-bounce-slow {
   animation: bounce-slow 3s infinite;
 }
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop-in,
+  .animate-pop-cycle,
+  .animate-float-slow,
+  .animate-float-medium,
+  .animate-float-fast,
+  .animate-bounce-slow {
+    animation: none;
+  }
+
+  .animate-pop-in,
+  .animate-pop-cycle {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Disable transition animations */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

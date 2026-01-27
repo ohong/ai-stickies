@@ -55,8 +55,8 @@ export function StyleGallery() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6">
-          {styles.map((style, index) => (
-            <div key={style.name} className={`group cursor-pointer ${index === 4 ? 'col-span-2 md:col-span-1 max-w-[50%] mx-auto md:max-w-none' : ''}`}>
+          {styles.map((style) => (
+            <div key={style.name} className="group cursor-pointer">
               <div className={`aspect-[4/5] rounded-xl md:rounded-2xl ${style.color} border-2 ${style.borderColor} flex flex-col items-center justify-center p-3 md:p-4 transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-lg relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -83,17 +83,17 @@ export function StyleGallery() {
           ))}
         </div>
 
-        {/* Sample stickers showcase */}
+        {/* Sample stickers showcase - diverse styles */}
         <div className="mt-16 md:mt-24 text-center">
           <h3 className="text-xl md:text-2xl font-bold text-foreground mb-6 md:mb-8">Generated Examples</h3>
           <div className="grid grid-cols-3 md:flex md:justify-center gap-3 md:gap-4 max-w-sm md:max-w-none mx-auto">
             {[
-              { image: "/landing/sticker-wave.png", text: "Hore!" },
-              { image: "/landing/sticker-thinking.png", text: "Hmm..." },
-              { image: "/landing/sticker-love.png", text: "Love!" },
-              { image: "/landing/sticker-shy.png", text: "Oops!" },
-              { image: "/landing/sticker-sleepy.png", text: "Zzz..." },
-              { image: "/landing/sticker-celebrate.png", text: "Yay!" }
+              { image: "/stickers/chibi/01.png", text: "Hi!", style: "Chibi" },
+              { image: "/stickers/high-fidelity/03.png", text: "Thanks!", style: "High Fidelity" },
+              { image: "/stickers/abstract/04.png", text: "Hmm...", style: "Abstract" },
+              { image: "/stickers/minimalist/05.png", text: "OK!", style: "Minimalist" },
+              { image: "/stickers/chibi/07.png", text: "Please!", style: "Chibi" },
+              { image: "/stickers/high-fidelity/07.png", text: "Love!", style: "High Fidelity" }
             ].map((sticker, i) => (
               <div
                 key={i}
@@ -101,7 +101,7 @@ export function StyleGallery() {
               >
                 <Image
                   src={sticker.image}
-                  alt={sticker.text}
+                  alt={`${sticker.style} style - ${sticker.text}`}
                   width={80}
                   height={80}
                   className="object-contain mb-0.5 md:mb-1 w-14 h-14 md:w-20 md:h-20"
