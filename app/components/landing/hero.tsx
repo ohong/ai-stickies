@@ -393,13 +393,7 @@ const stickers = [
 
 export function Hero() {
   return (
-    <section className="relative h-[100dvh] flex flex-col items-center justify-center overflow-hidden bg-white pt-24 md:pt-32">
-      {/* Background decoration - subtle clouds/blobs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-64 h-64 bg-gray-50 rounded-full blur-3xl opacity-60" />
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-green-50 rounded-full blur-3xl opacity-40" />
-      </div>
-
+    <section className="relative h-dvh flex flex-col items-center justify-center overflow-hidden bg-white pt-24 md:pt-32">
       {/* Floating Stickers */}
       <div className="absolute inset-0 pointer-events-none select-none">
         {stickers.map((sticker) => (
@@ -426,25 +420,24 @@ export function Hero() {
         ))}
       </div>
 
-      {/* Main content - No entrance animation as requested */}
+      {/* Main content */}
       <div className="relative z-10 text-center max-w-5xl mx-auto px-4 flex flex-col items-center justify-center">
         {/* Category badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border-2 border-black mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] transition-all">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border-2 border-gray-900 mb-6 shadow-sm">
           <span className="text-xs md:text-sm font-bold text-foreground">
             AI-Powered Personalization
           </span>
-          <div className="w-0 h-0 border-l-[5px] border-l-transparent border-t-[6px] border-t-black border-r-[5px] border-r-transparent absolute -bottom-[6px] left-1/2 -translate-x-1/2"></div>
         </div>
 
         {/* Main headline */}
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-foreground leading-[1.1] tracking-tight mb-4">
-          <span className="text-[#09C754]">LINE Stickers</span>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-foreground leading-[1.1] mb-4 text-balance">
+          <span className="text-[#0CC755]">LINE Stickers</span>
           <br />
           That Look Like You
         </h1>
 
         {/* Subtitle */}
-        <p className="mt-1 text-sm md:text-base text-muted-foreground whitespace-nowrap font-medium">
+        <p className="mt-1 text-sm md:text-base text-muted-foreground font-medium text-pretty">
           Upload a selfie, pick a style, get 10 ready-to-use stickers
         </p>
 
@@ -452,7 +445,7 @@ export function Hero() {
         <div className="mt-8 flex flex-col items-center gap-3">
           <Link
             href="/create"
-            className="inline-flex items-center justify-center gap-2 bg-[#00B900] hover:bg-[#00A000] text-white font-bold text-base md:text-lg px-8 py-3.5 rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 min-w-[240px]"
+            className="inline-flex items-center justify-center gap-2 bg-[#0CC755] hover:bg-[#0AB34D] text-white font-bold text-base md:text-lg px-8 py-3.5 rounded-full shadow-md transition-colors duration-150 min-w-[240px]"
           >
             Make your stickers
             <svg
@@ -470,7 +463,7 @@ export function Hero() {
               />
             </svg>
           </Link>
-          <span className="text-xs text-gray-400 font-medium">
+          <span className="text-xs text-muted-foreground font-medium">
             Takes less than 2 minutes
           </span>
         </div>

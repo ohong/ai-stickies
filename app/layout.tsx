@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Stickies - Create Personalized LINE Stickers with AI",
+  title: "AI Stickies - Make Your Own LINE Stickers",
   description:
     "Turn your selfie into a pack of 10 cute, personalized LINE stickers in minutes. Choose from 5 unique artistic styles and start expressing yourself!",
   metadataBase: new URL("https://aistickies.com"),
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     "LINE creator",
   ],
   openGraph: {
-    title: "AI Stickies - Create Personalized LINE Stickers with AI",
+    title: "AI Stickies - Make Your Own LINE Stickers",
     description:
       "Turn your selfie into a pack of 10 cute, personalized LINE stickers in minutes.",
     type: "website",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Stickies - Create Personalized LINE Stickers with AI",
+    title: "AI Stickies - Make Your Own LINE Stickers",
     description:
       "Turn your selfie into a pack of 10 cute, personalized LINE stickers in minutes.",
     images: ["/og-image.png"],

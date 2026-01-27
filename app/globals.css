@@ -41,7 +41,7 @@
   --popover-foreground: #1a1a1a;
 
   /* LINE green as primary */
-  --primary: #09C754;
+  --primary: #0CC755;
   --primary-foreground: #ffffff;
 
   /* Very light gray secondary */
@@ -62,7 +62,7 @@
   /* Light gray borders */
   --border: #e5e5e5;
   --input: #e5e5e5;
-  --ring: #09C754;
+  --ring: #0CC755;
   --radius: 0.75rem;
 }
 

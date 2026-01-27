@@ -14,7 +14,7 @@ interface ConfettiPiece {
 
 // Green-based celebration colors
 const colors = [
-  '#09C754', // primary green
+  '#0CC755', // primary green
   '#10B981', // emerald
   '#34D399', // lighter green
   '#6EE7B7', // mint
