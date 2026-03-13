@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, ArrowLeft } from 'lucide-react'
+import { ArrowRight, ArrowLeft, AlertCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/app/components/create/image-uploader'
 import { ImagePreview } from '@/app/components/create/image-preview'
@@ -77,24 +77,12 @@ export default function CreatePage() {
     clearGenerationError()
   }
 
-  if (isGenerating) {
-    return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
-        <GenerationProgress
-          progress={generationProgress}
-          currentStyle={currentStyle}
-          totalStyles={5}
-        />
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-dvh bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-14">
             <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="size-4" />
               <span className="text-sm">Back</span>
@@ -123,39 +111,33 @@ export default function CreatePage() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+      <main className="max-w-3xl mx-auto px-3 sm:px-6 lg:px-8 pt-18 sm:pt-22 pb-8 sm:pb-12">
         {/* Page title */}
-        <div className="text-center mb-10">
-          <span className="text-primary font-medium text-sm uppercase tracking-widest">
-            Step 1
-          </span>
-          <h1 className="mt-2 text-3xl md:text-4xl font-bold text-foreground text-balance">
-            Upload & Customize
+        <div className="text-center mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground text-balance">
+            Create Your Sticker Pack
           </h1>
-          <p className="mt-3 text-muted-foreground max-w-md mx-auto text-pretty">
-            Add your photo and personalize your sticker pack
+          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground text-pretty">
+            Upload a photo, then customize your style
           </p>
         </div>
 
-        {/* Error message */}
-        {displayError && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm flex items-center justify-between max-w-2xl mx-auto">
-            <span>{displayError}</span>
-            <button
-              onClick={handleClearError}
-              className="text-destructive hover:text-destructive/80 font-medium"
-            >
-              Dismiss
-            </button>
+        {/* Generating overlay */}
+        {isGenerating && (
+          <div className="mb-8">
+            <GenerationProgress
+              progress={generationProgress}
+              currentStyle={currentStyle}
+              totalStyles={5}
+            />
           </div>
         )}
 
-        {/* Two-column layout */}
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          {/* Left column - Image upload */}
-          <div>
-            <h2 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-              <span className="size-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center">1</span>
+        {/* Single-column stacked layout */}
+        <div className="space-y-6">
+          {/* Section 1: Photo upload */}
+          <section>
+            <h2 className="text-sm font-medium text-foreground mb-3">
               Your Photo
             </h2>
             {uploadedImage ? (
@@ -170,56 +152,81 @@ export default function CreatePage() {
                 onUpload={uploadFile}
                 isUploading={isUploading}
                 uploadProgress={uploadProgress}
-                disabled={!canGenerate}
+                disabled={!canGenerate || isGenerating}
               />
             )}
+            {/* Upload error shown inline */}
+            {uploadError && (
+              <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm flex items-start gap-2">
+                <AlertCircle className="size-4 mt-0.5 shrink-0" />
+                <span className="flex-1">{uploadError}</span>
+                <button onClick={clearError} aria-label="Dismiss error">
+                  <X className="size-4" />
+                </button>
+              </div>
+            )}
             {!canGenerate && !sessionLoading && !sessionError && (
-              <p className="mt-4 text-sm text-amber-700 bg-amber-50 rounded-lg p-3 text-center">
+              <p className="mt-3 text-sm text-amber-700 bg-amber-50 rounded-lg p-3 text-center">
                 You&apos;ve used all your free generations. Check back later.
               </p>
             )}
-          </div>
+          </section>
 
-          {/* Right column - Form inputs */}
-          <div>
-            <h2 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-              <span className="size-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center">2</span>
-              Customize
-            </h2>
-            <div className="space-y-6 bg-card rounded-2xl border border-border p-6">
-              <StyleInput
-                value={styleDescription}
-                onChange={setStyleDescription}
-                disabled={!canGenerate}
-              />
-              <ContextInput
-                value={personalContext}
-                onChange={setPersonalContext}
-                disabled={!canGenerate}
-              />
-              <LanguageSelect
-                value={language}
-                onChange={setLanguage}
-                disabled={!canGenerate}
-              />
+          {/* Section 2: Customization — only show after upload */}
+          {uploadedImage && (
+            <section className="space-y-5">
+              <h2 className="text-sm font-medium text-foreground">
+                Customize
+                <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+              </h2>
+              <div className="bg-card rounded-2xl border border-border p-5 space-y-5">
+                <StyleInput
+                  value={styleDescription}
+                  onChange={setStyleDescription}
+                  disabled={isGenerating}
+                />
+                <ContextInput
+                  value={personalContext}
+                  onChange={setPersonalContext}
+                  disabled={isGenerating}
+                />
+                <LanguageSelect
+                  value={language}
+                  onChange={setLanguage}
+                  disabled={isGenerating}
+                />
+              </div>
+            </section>
+          )}
+
+          {/* Generation / session error shown near the action */}
+          {(generationError || sessionError) && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="size-4 mt-0.5 shrink-0" />
+              <span className="flex-1">{generationError || sessionError}</span>
+              <button onClick={handleClearError} aria-label="Dismiss error">
+                <X className="size-4" />
+              </button>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Generate button */}
-        <div className="mt-12 flex flex-col items-center">
-          <Button
-            size="lg"
-            onClick={handleGenerate}
-            disabled={isGenerateDisabled}
-            className="min-w-[280px] h-14 text-lg font-semibold rounded-full shadow-md"
-          >
-            Generate Previews
-            <ArrowRight className="size-5 ml-2" />
-          </Button>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Uses 1 of your {maxGenerations} free generations
-          </p>
+          {/* Generate button — right below the form */}
+          {uploadedImage && (
+            <div className="flex flex-col items-center pt-2">
+              <Button
+                size="lg"
+                onClick={handleGenerate}
+                disabled={isGenerateDisabled}
+                className="w-full sm:w-auto min-w-[280px] h-13 text-base font-semibold"
+              >
+                Generate 5 Style Previews
+                <ArrowRight className="size-5 ml-1" />
+              </Button>
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                Uses 1 of your {maxGenerations} free generations
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>

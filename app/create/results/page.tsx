@@ -127,8 +127,8 @@ function ResultsContent() {
     return (
       <div className="min-h-dvh bg-background">
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
+          <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-14 sm:h-16">
               <Link href="/" className="flex items-center gap-2">
                 <div className="size-7 rounded-lg bg-primary flex items-center justify-center">
                   <svg className="size-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,8 +186,8 @@ function ResultsContent() {
       <Confetti />
 
       <header className="fixed top-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             <Link href="/" className="flex items-center gap-2">
               <div className="size-7 rounded-lg bg-primary flex items-center justify-center">
                 <svg className="size-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,28 +201,27 @@ function ResultsContent() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
-        <div className="text-center mb-8">
-          <span className="text-primary font-medium text-sm uppercase tracking-widest">Complete</span>
-          <h1 className="mt-2 text-3xl md:text-4xl font-bold text-foreground mb-3 text-balance">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-44 sm:pb-12">
+        <div className="text-center mb-6 sm:mb-8">
+          <span className="text-primary font-medium text-xs sm:text-sm uppercase tracking-widest">Complete</span>
+          <h1 className="mt-1 sm:mt-2 text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3 text-balance">
             Your Sticker Packs Are Ready
           </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto text-pretty">
+          <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto text-pretty">
             {packs.length} pack{packs.length !== 1 ? 's' : ''} with {totalStickers} stickers generated.
-            Download them individually or all at once.
           </p>
         </div>
 
         {downloadError && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center justify-between">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center justify-between">
             <p className="text-sm text-destructive">{downloadError}</p>
-            <button onClick={clearError} className="text-destructive hover:text-destructive/80 text-sm font-medium">
+            <button onClick={clearError} className="text-destructive hover:text-destructive/80 text-sm font-medium ml-2 shrink-0">
               Dismiss
             </button>
           </div>
         )}
 
-        <div className="space-y-6 mb-8">
+        <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
           {packs.map((pack) => (
             <StickerPackCard
               key={pack.id}
@@ -237,7 +236,8 @@ function ResultsContent() {
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        {/* Desktop action buttons */}
+        <div className="hidden sm:flex flex-col sm:flex-row items-center justify-center gap-4">
           <DownloadAllButton
             onDownload={handleDownloadAll}
             isDownloading={isDownloading}
@@ -251,7 +251,7 @@ function ResultsContent() {
           </Button>
         </div>
 
-        <div className="flex justify-center gap-4 mt-6">
+        <div className="hidden sm:flex justify-center gap-4 mt-6">
           <Button variant="ghost" onClick={() => router.push('/create')}>
             <Sparkles className="size-4 mr-2" />
             Create More Stickers
@@ -262,6 +262,31 @@ function ResultsContent() {
           </Button>
         </div>
       </main>
+
+      {/* Mobile sticky bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:hidden">
+        <div className="flex gap-2">
+          <DownloadAllButton
+            onDownload={handleDownloadAll}
+            isDownloading={isDownloading}
+            currentDownload={currentDownload}
+            packCount={packs.length}
+          />
+          <Button variant="outline" onClick={() => setIsMarketplaceModalOpen(true)} className="shrink-0">
+            <Store className="size-4" />
+          </Button>
+        </div>
+        <div className="flex justify-center gap-3 mt-2">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/create')} className="text-xs h-8">
+            <Sparkles className="size-3 mr-1" />
+            Create More
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/history')} className="text-xs h-8">
+            <History className="size-3 mr-1" />
+            History
+          </Button>
+        </div>
+      </div>
 
       <StickerModal
         isOpen={isStickerModalOpen}

@@ -135,13 +135,12 @@ export async function POST(
       .update({ status: 'processing' })
       .eq('id', generationId)
 
-    // Generate packs for each selected style
-    const results: PackGenerationResult[] = []
+    // Generate packs for all selected styles in parallel
     const allErrors: string[] = []
 
-    for (const stylePreview of stylePreviews as StylePreview[]) {
-      try {
-        const result = await generateStickerPack({
+    const settled = await Promise.allSettled(
+      (stylePreviews as StylePreview[]).map((stylePreview) =>
+        generateStickerPack({
           generationId,
           stylePreviewId: stylePreview.id,
           styleName: stylePreview.style_name,
@@ -151,13 +150,20 @@ export async function POST(
           personalContext: (generation as Generation).personal_context ?? undefined,
           count: 10,
         })
+      )
+    )
 
-        results.push(result)
-        allErrors.push(...result.errors)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Pack generation failed'
-        console.error(`Failed to generate pack for style ${stylePreview.style_name}:`, message)
-        allErrors.push(`${stylePreview.style_name}: ${message}`)
+    const results: PackGenerationResult[] = []
+    for (let i = 0; i < settled.length; i++) {
+      const outcome = settled[i]
+      if (outcome.status === 'fulfilled') {
+        results.push(outcome.value)
+        allErrors.push(...outcome.value.errors)
+      } else {
+        const styleName = (stylePreviews as StylePreview[])[i].style_name
+        const message = outcome.reason instanceof Error ? outcome.reason.message : 'Pack generation failed'
+        console.error(`Failed to generate pack for style ${styleName}:`, message)
+        allErrors.push(`${styleName}: ${message}`)
       }
     }
 

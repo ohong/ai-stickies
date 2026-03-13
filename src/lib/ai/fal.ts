@@ -44,6 +44,9 @@ export async function generateImage(
 
   const body: Record<string, unknown> = {
     prompt: stickerPrompt,
+    resolution: '0.5K', // 512x512 — sufficient for 370x320 stickers, faster + cheaper (0.75x)
+    aspect_ratio: '4:3', // closest to 370x320 (1.15:1)
+    output_format: 'jpeg', // smaller downloads than PNG; processForLine converts to PNG later
   }
 
   // Add reference image as data URI if provided

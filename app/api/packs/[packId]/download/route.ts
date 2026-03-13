@@ -60,8 +60,8 @@ export async function GET(
       return NextResponse.json({ error: 'No stickers in pack' }, { status: 400 })
     }
 
-    // Fetch sticker buffers from storage
-    const stickerData = await Promise.all(
+    // Fetch sticker buffers from storage, skipping any that are missing
+    const stickerResults = await Promise.all(
       stickers
         .sort((a, b) => a.sequence_number - b.sequence_number)
         .map(async (sticker) => {
@@ -70,7 +70,8 @@ export async function GET(
             .download(sticker.storage_path)
 
           if (error || !data) {
-            throw new Error(`Failed to download sticker: ${sticker.storage_path}`)
+            console.warn(`Skipping missing sticker: ${sticker.storage_path}`)
+            return null
           }
 
           return {
@@ -82,6 +83,17 @@ export async function GET(
           }
         })
     )
+
+    const stickerData = stickerResults.filter(
+      (s): s is NonNullable<typeof s> => s !== null
+    )
+
+    if (stickerData.length === 0) {
+      return NextResponse.json(
+        { error: 'No sticker files available for download' },
+        { status: 404 }
+      )
+    }
 
     // Create main and tab images
     const stickerBuffers = stickerData.map((s) => s.buffer)

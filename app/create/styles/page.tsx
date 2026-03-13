@@ -105,8 +105,8 @@ function StylesContent() {
     return (
       <div className="min-h-dvh bg-background">
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
+          <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-14 sm:h-16">
               <Link href="/" className="flex items-center gap-2">
                 <div className="size-7 rounded-lg bg-primary flex items-center justify-center">
                   <svg className="size-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,9 +119,9 @@ function StylesContent() {
             </div>
           </div>
         </header>
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3 text-balance">
+        <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-12">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 text-balance">
               Loading Previews...
             </h1>
           </div>
@@ -170,8 +170,8 @@ function StylesContent() {
   return (
     <div className="min-h-dvh bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             <Link href="/" className="flex items-center gap-2">
               <div className="size-7 rounded-lg bg-primary flex items-center justify-center">
                 <svg className="size-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,22 +185,22 @@ function StylesContent() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
-        <div className="text-center mb-8">
-          <span className="text-primary font-medium text-sm uppercase tracking-widest">Step 2</span>
-          <h1 className="mt-2 text-3xl md:text-4xl font-bold text-foreground mb-3 text-balance">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-40 sm:pb-12">
+        <div className="text-center mb-5 sm:mb-8">
+          <span className="text-primary font-medium text-xs sm:text-sm uppercase tracking-widest">Step 2</span>
+          <h1 className="mt-1 sm:mt-2 text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3 text-balance">
             Select Your Styles
           </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto text-pretty">
-            Choose 1-5 styles to generate full sticker packs. Each pack will contain 8 unique stickers.
+          <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto text-pretty">
+            Tap to select 1-5 styles for full sticker packs.
           </p>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-8">
           <SelectionSummary selectedCount={selectedCount} estimatedTime={estimatedTime} maxSelection={5} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {previews.map((preview) => (
             <StylePreviewCard
               key={preview.id}
@@ -214,7 +214,8 @@ function StylesContent() {
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        {/* Desktop action buttons */}
+        <div className="hidden sm:flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button variant="outline" size="lg" onClick={() => router.push('/create')} className="w-full sm:w-auto">
             <ArrowLeft className="size-4 mr-2" />
             Back
@@ -232,10 +233,30 @@ function StylesContent() {
           </Button>
         </div>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+        <p className="hidden sm:block mt-4 text-center text-sm text-muted-foreground">
           Each pack uses 1 generation. You have {remainingGenerations} remaining.
         </p>
       </main>
+
+      {/* Mobile sticky bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:hidden">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push('/create')} className="shrink-0">
+            <ArrowLeft className="size-4" />
+          </Button>
+          <Button
+            onClick={handleGeneratePacks}
+            disabled={!canProceed}
+            className="flex-1 h-12 font-semibold shadow-md"
+          >
+            <Sparkles className="size-4 mr-2" />
+            Generate {selectedCount > 0 ? selectedCount : ''} Pack{selectedCount !== 1 ? 's' : ''}
+          </Button>
+        </div>
+        <p className="mt-1.5 text-center text-xs text-muted-foreground">
+          {remainingGenerations} generation{remainingGenerations !== 1 ? 's' : ''} remaining
+        </p>
+      </div>
     </div>
   )
 }

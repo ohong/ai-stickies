@@ -92,14 +92,15 @@ export async function POST(
       (a, b) => a.sequence_number - b.sequence_number
     )
 
-    const stickerData = await Promise.all(
+    const stickerResults = await Promise.all(
       sortedStickers.map(async (sticker) => {
         const { data, error } = await supabase.storage
           .from(storageConfig.stickerBucket)
           .download(sticker.storage_path)
 
         if (error || !data) {
-          throw new Error(`Failed to download: ${sticker.storage_path}`)
+          console.warn(`Skipping missing sticker: ${sticker.storage_path}`)
+          return null
         }
 
         const buffer = Buffer.from(await data.arrayBuffer())
@@ -115,6 +116,17 @@ export async function POST(
         }
       })
     )
+
+    const stickerData = stickerResults.filter(
+      (s): s is NonNullable<typeof s> => s !== null
+    )
+
+    if (stickerData.length < LINE_SPECS.pack.minStickers) {
+      return NextResponse.json(
+        { error: `Only ${stickerData.length} sticker files available, need at least ${LINE_SPECS.pack.minStickers}` },
+        { status: 400 }
+      )
+    }
 
     // Create pack images
     const stickerBuffers = stickerData.map((s) => s.buffer)

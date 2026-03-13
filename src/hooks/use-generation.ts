@@ -58,19 +58,20 @@ export function useGeneration() {
         currentStyle: 'Preparing...',
       })
 
-      // Simulate progress updates
+      // Simulate progress with decelerating curve
       const progressInterval = setInterval(() => {
         setState((prev) => {
-          if (prev.progress >= 90) return prev
+          if (prev.progress >= 95) return prev
           const styles = ['High Fidelity', 'Stylized', 'Chibi', 'Abstract', 'Minimalist']
           const styleIndex = Math.floor(prev.progress / 20)
+          const increment = Math.max((95 - prev.progress) * 0.08, 0.5)
           return {
             ...prev,
-            progress: Math.min(prev.progress + 5, 90),
+            progress: Math.min(prev.progress + increment, 95),
             currentStyle: styles[styleIndex] ?? 'Processing...',
           }
         })
-      }, 500)
+      }, 1000)
 
       try {
         const response = await fetch('/api/generate/previews', {

@@ -76,8 +76,8 @@ export default function HistoryPage() {
   return (
     <div className="min-h-dvh bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             <Link href="/" className="flex items-center gap-2">
               <div className="size-7 rounded-lg bg-primary flex items-center justify-center">
                 <svg className="size-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,17 +91,17 @@ export default function HistoryPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+      <main className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-12">
+        <div className="flex items-center gap-4 mb-6 sm:mb-8">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-10">
             <ArrowLeft className="size-4 mr-1" />
             Back
           </Button>
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Generation History</h1>
-          <p className="text-muted-foreground">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2">Generation History</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             View and re-download your previous sticker packs
           </p>
         </div>
@@ -134,32 +134,32 @@ export default function HistoryPage() {
               <Link
                 key={item.generationId}
                 href={`/create/results?generationId=${item.generationId}`}
-                className="block p-4 bg-card rounded-xl border border-border hover:border-primary/50 hover:shadow-sm transition-all"
+                className="block p-4 bg-card rounded-xl border border-border hover:border-primary/50 active:bg-secondary/50 hover:shadow-sm transition-all"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="size-12 rounded-lg bg-secondary flex items-center justify-center">
-                      <Package className="size-6 text-muted-foreground" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <div className="size-10 sm:size-12 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                      <Package className="size-5 sm:size-6 text-muted-foreground" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm sm:text-base text-foreground">
                           Sticker Pack{item.styleCount && item.styleCount > 1 ? 's' : ''}
                         </span>
                         {getStatusBadge(item.status)}
                       </div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-                        <Clock className="size-3" />
-                        {formatDate(item.createdAt)}
+                      <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground mt-0.5">
+                        <Clock className="size-3 shrink-0" />
+                        <span className="truncate">{formatDate(item.createdAt)}</span>
                         {item.styleCount && (
-                          <span className="ml-2">
+                          <span className="ml-1 sm:ml-2 shrink-0">
                             {item.styleCount} style{item.styleCount > 1 ? 's' : ''}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <ExternalLink className="size-5 text-muted-foreground" />
+                  <ExternalLink className="size-4 sm:size-5 text-muted-foreground shrink-0" />
                 </div>
               </Link>
             ))}

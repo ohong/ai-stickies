@@ -52,18 +52,21 @@ export function StickerThumbnail({
         onLoad={() => setIsLoaded(true)}
       />
 
-      {isHovered && (
-        <div className="absolute inset-x-0 bottom-0 bg-foreground/80 p-2">
-          <div className="text-background text-xs font-medium truncate w-full">
-            {emotion || 'Sticker'}
-            {textContent && (
-              <span className="block text-background/70 text-[10px] truncate">
-                {textContent}
-              </span>
-            )}
-          </div>
+      {/* Always visible on mobile, hover-only on desktop */}
+      <div className={cn(
+        'absolute inset-x-0 bottom-0 bg-foreground/80 p-1.5 sm:p-2',
+        'sm:opacity-0 sm:transition-opacity',
+        isHovered && 'sm:opacity-100'
+      )}>
+        <div className="text-background text-[11px] sm:text-xs font-medium truncate w-full">
+          {emotion || 'Sticker'}
+          {textContent && (
+            <span className="hidden sm:block text-background/70 text-[10px] truncate">
+              {textContent}
+            </span>
+          )}
         </div>
-      )}
+      </div>
     </button>
   )
 }

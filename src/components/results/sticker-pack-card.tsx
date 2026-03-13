@@ -35,11 +35,14 @@ export function StickerPackCard({
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-foreground">
-            {styleName}
-          </CardTitle>
+      <CardHeader className="px-4 sm:px-6 pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg font-semibold text-foreground truncate">
+              {styleName}
+            </CardTitle>
+            <p className="text-xs sm:text-sm text-muted-foreground tabular-nums">{stickers.length} stickers</p>
+          </div>
           <DownloadPackButton
             packName={styleName}
             onDownload={onDownload}
@@ -48,11 +51,10 @@ export function StickerPackCard({
             size="sm"
           />
         </div>
-        <p className="text-sm text-muted-foreground tabular-nums">{stickers.length} stickers</p>
       </CardHeader>
 
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+      <CardContent className="px-4 sm:px-6">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
           {sortedStickers.map((sticker, index) => (
             <StickerThumbnail
               key={sticker.id}
@@ -71,7 +73,7 @@ export function StickerPackCard({
 export function StickerPackCardSkeleton() {
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="pb-3">
+      <CardHeader className="px-4 sm:px-6 pb-3">
         <div className="flex items-center justify-between">
           <div className="h-6 w-32 bg-muted rounded" />
           <div className="h-8 w-28 bg-muted rounded-full" />
@@ -79,8 +81,8 @@ export function StickerPackCardSkeleton() {
         <div className="h-4 w-20 bg-muted rounded mt-1" />
       </CardHeader>
 
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+      <CardContent className="px-4 sm:px-6">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
           {Array.from({ length: 10 }).map((_, i) => (
             <StickerThumbnailSkeleton key={i} />
           ))}

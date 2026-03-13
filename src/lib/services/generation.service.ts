@@ -6,6 +6,7 @@
 import { createAdminClient } from '@/src/lib/supabase/admin'
 import { generateImageWithFallback, resultToBase64 } from '@/src/lib/ai/provider'
 import { generateSimplePreviewPrompt } from '@/src/lib/services/prompt.service'
+import { processForLine } from '@/src/lib/services/image-processing.service'
 import { STYLE_ORDER, getStyleConfig } from '@/src/constants/styles'
 import { storageConfig, generationConfig } from '@/src/lib/config'
 import type { FidelityLevel, Language, Provider, StylePreview } from '@/src/types/database'
@@ -174,18 +175,19 @@ async function generateSinglePreview(
     height: generationConfig.imageHeight,
   })
 
-  // Convert result to base64 for storage
-  const { data: imageBase64, mimeType: resultMimeType } = await resultToBase64(result)
+  // Convert result to base64, then process for LINE specs (resize + compress to fit bucket limit)
+  const { data: imageBase64 } = await resultToBase64(result)
+  const rawBuffer = Buffer.from(imageBase64, 'base64')
+  const processedBuffer = await processForLine(rawBuffer)
 
   // Upload to storage
   const timestamp = Date.now()
   const storagePath = `${input.sessionId}/previews/${input.generationId}/${input.fidelityLevel}_${timestamp}.png`
 
-  const imageBuffer = Buffer.from(imageBase64, 'base64')
   const { error: uploadError } = await supabase.storage
     .from(storageConfig.stickerBucket)
-    .upload(storagePath, imageBuffer, {
-      contentType: resultMimeType,
+    .upload(storagePath, processedBuffer, {
+      contentType: 'image/png',
       upsert: false,
     })
 

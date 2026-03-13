@@ -79,9 +79,9 @@ export function StylePreviewCard({
         )}
       </div>
 
-      <div className="p-4">
-        <h3 className="font-semibold text-foreground mb-1">{styleName}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
+      <div className="p-3 sm:p-4">
+        <h3 className="font-semibold text-sm sm:text-base text-foreground mb-0.5 sm:mb-1">{styleName}</h3>
+        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{description}</p>
       </div>
     </Card>
   )

@@ -96,18 +96,18 @@ export function useSession() {
   const decrementGenerations = useCallback(() => {
     setState((prev) => {
       const newRemaining = Math.max(0, prev.remainingGenerations - 1)
-      const newState = {
+      return {
         ...prev,
         generationCount: prev.generationCount + 1,
         remainingGenerations: newRemaining,
       }
-      
-      // Sync with Legend State observable for instant UI update
-      sessionCounterState$.remaining.set(newRemaining)
-      
-      return newState
     })
-  }, [])
+    // Sync with Legend State observable outside the setState updater
+    // to avoid updating another component during React's render phase
+    sessionCounterState$.remaining.set(
+      Math.max(0, state.remainingGenerations - 1)
+    )
+  }, [state.remainingGenerations])
 
   return {
     ...state,

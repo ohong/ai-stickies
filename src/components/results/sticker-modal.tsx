@@ -60,7 +60,7 @@ export function StickerModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="max-w-2xl p-0 overflow-hidden"
+        className="max-w-2xl p-0 overflow-hidden !rounded-t-2xl sm:!rounded-2xl !pb-[env(safe-area-inset-bottom)]"
         onKeyDown={handleKeyDown}
       >
         <DialogHeader className="p-4 pb-0">
@@ -75,8 +75,9 @@ export function StickerModal({
             disabled={!canGoPrev}
             className={cn(
               'absolute left-2 top-1/2 -translate-y-1/2 z-10',
-              'size-10 rounded-full bg-card/90 shadow-md',
+              'size-11 sm:size-10 rounded-full bg-card/90 shadow-md',
               'flex items-center justify-center',
+              'active:scale-95 transition-transform',
               canGoPrev
                 ? 'hover:bg-card cursor-pointer'
                 : 'opacity-30 cursor-not-allowed'
@@ -91,8 +92,9 @@ export function StickerModal({
             disabled={!canGoNext}
             className={cn(
               'absolute right-2 top-1/2 -translate-y-1/2 z-10',
-              'size-10 rounded-full bg-card/90 shadow-md',
+              'size-11 sm:size-10 rounded-full bg-card/90 shadow-md',
               'flex items-center justify-center',
+              'active:scale-95 transition-transform',
               canGoNext
                 ? 'hover:bg-card cursor-pointer'
                 : 'opacity-30 cursor-not-allowed'
@@ -102,7 +104,7 @@ export function StickerModal({
             <ChevronRight className="size-5 text-foreground" />
           </button>
 
-          <div className="aspect-square max-h-[60vh] mx-auto p-4">
+          <div className="aspect-square max-h-[50dvh] sm:max-h-[60vh] mx-auto p-4">
             <img
               src={sticker.imageUrl}
               alt={sticker.emotion || 'Sticker'}
@@ -111,13 +113,13 @@ export function StickerModal({
           </div>
         </div>
 
-        <div className="p-4 pt-0 space-y-3">
+        <div className="px-4 pb-4 pt-0 space-y-3">
           <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
             <span className="tabular-nums">#{sticker.sequenceNumber} of {stickers.length}</span>
             {sticker.textContent && (
               <>
                 <span className="size-1 rounded-full bg-border" />
-                <span className="italic">"{sticker.textContent}"</span>
+                <span className="italic truncate max-w-[200px]">"{sticker.textContent}"</span>
               </>
             )}
           </div>
@@ -126,20 +128,20 @@ export function StickerModal({
             <Button
               onClick={() => onDownload(sticker.imageUrl, sticker.emotion || 'sticker')}
               disabled={isDownloading}
-              className="min-w-[200px]"
+              className="w-full sm:w-auto min-w-[200px] h-12 sm:h-10"
             >
               <Download className="size-4 mr-2" />
               {isDownloading ? 'Downloading...' : 'Download Sticker'}
             </Button>
           </div>
 
-          <div className="flex justify-center gap-1.5 pt-2">
+          <div className="flex justify-center gap-2 sm:gap-1.5 pt-2 flex-wrap">
             {stickers.map((s, i) => (
               <button
                 key={s.id}
                 onClick={() => onNavigate(i)}
                 className={cn(
-                  'size-2 rounded-full',
+                  'size-3 sm:size-2 rounded-full',
                   i === currentIndex
                     ? 'bg-primary'
                     : 'bg-muted hover:bg-muted-foreground/30'

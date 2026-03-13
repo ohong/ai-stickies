@@ -74,15 +74,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const stickers = pack.stickers
           .sort((a, b) => a.sequence_number - b.sequence_number)
 
-        // Fetch and resize sticker buffers
-        const stickerBuffers = await Promise.all(
+        // Fetch and resize sticker buffers, skipping missing files
+        const stickerResults = await Promise.all(
           stickers.map(async (sticker) => {
             const { data, error } = await supabase.storage
               .from(storageConfig.stickerBucket)
               .download(sticker.storage_path)
 
             if (error || !data) {
-              throw new Error(`Failed to download: ${sticker.storage_path}`)
+              console.warn(`Skipping missing sticker: ${sticker.storage_path}`)
+              return null
             }
 
             const originalBuffer = Buffer.from(await data.arrayBuffer())
@@ -95,6 +96,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             }
           })
         )
+
+        const stickerBuffers = stickerResults.filter(
+          (s): s is NonNullable<typeof s> => s !== null
+        )
+
+        if (stickerBuffers.length === 0) return null
 
         const buffers = stickerBuffers.map((s) => s.buffer)
 
@@ -116,8 +123,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       })
     )
 
+    // Filter out packs where all stickers were missing
+    const validPacks = packDataForZip.filter(
+      (p): p is NonNullable<typeof p> => p !== null
+    )
+
+    if (validPacks.length === 0) {
+      return NextResponse.json(
+        { error: 'No sticker files available for export' },
+        { status: 404 }
+      )
+    }
+
     // Create marketplace ZIP
-    const zipBuffer = await createMarketplaceZip(packDataForZip)
+    const zipBuffer = await createMarketplaceZip(validPacks)
 
     return new NextResponse(new Uint8Array(zipBuffer), {
       status: 200,

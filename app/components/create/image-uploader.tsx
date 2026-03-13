@@ -81,13 +81,13 @@ export function ImageUploader({
       onKeyDown={handleKeyDown}
       className={cn(
         'relative flex flex-col items-center justify-center',
-        'w-full min-h-[280px] p-8',
+        'w-full py-8 sm:py-12 px-4 sm:px-6',
         'border-2 border-dashed rounded-xl',
         'cursor-pointer',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
         disabled || isUploading
           ? 'border-muted bg-muted/50 cursor-not-allowed'
-          : 'border-border bg-secondary/50 hover:border-primary hover:bg-secondary'
+          : 'border-border bg-secondary/30 hover:border-primary hover:bg-secondary/60'
       )}
     >
       <input
@@ -100,37 +100,22 @@ export function ImageUploader({
       />
 
       {isUploading ? (
-        <div className="flex flex-col items-center gap-4 w-full max-w-xs" aria-live="polite">
-          <div className="size-16 rounded-full bg-secondary flex items-center justify-center">
-            <Upload className="size-8 text-primary" aria-hidden="true" />
-          </div>
-          <p className="text-sm font-medium text-foreground">Uploading…</p>
+        <div className="flex flex-col items-center gap-3 w-full max-w-xs" aria-live="polite">
+          <Upload className="size-8 text-primary" aria-hidden="true" />
+          <p className="text-sm font-medium text-foreground">Uploading...</p>
           <Progress value={uploadProgress} className="w-full" />
           <p className="text-xs text-muted-foreground tabular-nums">{uploadProgress}%</p>
         </div>
       ) : (
         <>
-          <div className="size-20 rounded-full bg-secondary flex items-center justify-center mb-4">
-            <ImageIcon className="size-10 text-primary" aria-hidden="true" />
-          </div>
-          <p className="text-lg font-medium text-foreground mb-2">
-            Drop your photo here
+          <ImageIcon className="size-8 sm:size-10 text-muted-foreground mb-2 sm:mb-3" aria-hidden="true" />
+          <p className="text-sm font-medium text-foreground mb-1">
+            <span className="sm:hidden">Tap to upload a photo</span>
+            <span className="hidden sm:inline">Drop your photo here</span>
           </p>
-          <p className="text-sm text-muted-foreground mb-4">or click to browse</p>
-          <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
-            <span className="px-2 py-1 bg-card rounded-full border border-border">
-              JPG
-            </span>
-            <span className="px-2 py-1 bg-card rounded-full border border-border">
-              PNG
-            </span>
-            <span className="px-2 py-1 bg-card rounded-full border border-border">
-              WebP
-            </span>
-            <span className="px-2 py-1 bg-card rounded-full border border-border">
-              Max {storageConfig.maxUploadSizeMb}MB
-            </span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            JPG, PNG, or WebP up to {storageConfig.maxUploadSizeMb}MB
+          </p>
         </>
       )}
     </div>

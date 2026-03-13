@@ -51,6 +51,11 @@ export interface PackGenerationResult {
   errors: string[]
 }
 
+interface StickerWithBuffer {
+  sticker: Sticker
+  buffer: Buffer
+}
+
 type ProgressCallback = (progress: PackGenerationProgress) => void
 
 /**
@@ -114,7 +119,7 @@ export async function generateStickerPack(
       message: 'Generating sticker images...',
     })
 
-    const stickers = await generateStickersInBatches(
+    const stickersWithBuffers = await generateStickersInBatches(
       pack.id,
       input.generationId,
       prompts,
@@ -130,8 +135,16 @@ export async function generateStickerPack(
       errors
     )
 
-    if (stickers.length === 0) {
+    if (stickersWithBuffers.length === 0) {
       throw new Error('No stickers were generated successfully')
+    }
+
+    const stickers = stickersWithBuffers.map(s => s.sticker)
+
+    // Build cache of buffers to avoid re-downloading for ZIP
+    const cachedBuffers = new Map<string, Buffer>()
+    for (const { sticker, buffer } of stickersWithBuffers) {
+      cachedBuffers.set(sticker.storage_path, buffer)
     }
 
     // Step 4: Create ZIP and pack images
@@ -147,7 +160,8 @@ export async function generateStickerPack(
       input.generationId,
       stickers,
       input.styleName,
-      supabase
+      supabase,
+      cachedBuffers
     )
 
     // Update pack with ZIP path
@@ -211,8 +225,8 @@ async function generateStickersInBatches(
   supabase: ReturnType<typeof createAdminClient>,
   onProgress: (completed: number) => void,
   errors: string[]
-): Promise<Sticker[]> {
-  const stickers: Sticker[] = []
+): Promise<StickerWithBuffer[]> {
+  const stickers: StickerWithBuffer[] = []
   let completed = 0
 
   // Process in batches
@@ -261,7 +275,7 @@ async function generateSingleSticker(
   sequenceNumber: number,
   supabase: ReturnType<typeof createAdminClient>,
   retryCount = 0
-): Promise<Sticker> {
+): Promise<StickerWithBuffer> {
   try {
     // Generate image (with automatic fallback)
     const result = await generateImageWithFallback({
@@ -309,7 +323,7 @@ async function generateSingleSticker(
       throw new Error(`Database insert failed: ${dbError?.message}`)
     }
 
-    return sticker
+    return { sticker, buffer: processedBuffer }
   } catch (error) {
     // Retry once for non-moderation errors
     if (retryCount < MAX_RETRIES) {
@@ -343,21 +357,29 @@ async function createAndStorePackZip(
   generationId: string,
   stickers: Sticker[],
   packName: string,
-  supabase: ReturnType<typeof createAdminClient>
+  supabase: ReturnType<typeof createAdminClient>,
+  cachedBuffers?: Map<string, Buffer>
 ): Promise<string | null> {
   try {
-    // Fetch all sticker buffers
+    // Use cached buffers when available, fall back to downloading
     const stickerData = await Promise.all(
       stickers.map(async sticker => {
-        const { data, error } = await supabase.storage
-          .from(storageConfig.stickerBucket)
-          .download(sticker.storage_path)
+        const cached = cachedBuffers?.get(sticker.storage_path)
+        let buffer: Buffer
 
-        if (error || !data) {
-          throw new Error(`Failed to download sticker: ${sticker.storage_path}`)
+        if (cached) {
+          buffer = cached
+        } else {
+          const { data, error } = await supabase.storage
+            .from(storageConfig.stickerBucket)
+            .download(sticker.storage_path)
+
+          if (error || !data) {
+            throw new Error(`Failed to download sticker: ${sticker.storage_path}`)
+          }
+
+          buffer = Buffer.from(await data.arrayBuffer())
         }
-
-        const buffer = Buffer.from(await data.arrayBuffer())
 
         return {
           sequenceNumber: sticker.sequence_number,

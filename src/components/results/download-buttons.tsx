@@ -59,7 +59,7 @@ export function DownloadAllButton({
       size="lg"
       onClick={onDownload}
       disabled={isDownloading || packCount === 0}
-      className="min-w-[200px] shadow-md"
+      className="flex-1 sm:flex-none min-w-[200px] h-12 sm:h-10 shadow-md"
     >
       {isThisDownloading ? (
         <Loader2 className="size-4 mr-2 animate-spin" />
