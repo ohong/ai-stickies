@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react'
 import { storageConfig } from '@/src/lib/config'
+import { createClient } from '@/src/lib/supabase/client'
+import { parseApiResponse } from '@/src/lib/utils/http'
 
 interface UploadedImage {
   id: string
@@ -22,6 +24,14 @@ interface UploadResponse {
   previewUrl: string
   sessionId: string
   remainingGenerations: number
+}
+
+interface InitiateUploadResponse {
+  sessionId: string
+  remainingGenerations: number
+  signedUrl: string
+  storagePath: string
+  token: string
 }
 
 export function useUpload() {
@@ -48,6 +58,8 @@ export function useUpload() {
   }, [])
 
   const uploadFile = useCallback(async (file: File): Promise<boolean> => {
+    let progressInterval: ReturnType<typeof setInterval> | null = null
+
     // Validate file first
     const validationError = validateFile(file)
     if (validationError) {
@@ -63,31 +75,61 @@ export function useUpload() {
     })
 
     try {
-      // Create form data
-      const formData = new FormData()
-      formData.append('file', file)
-
-      // Simulate progress updates (XHR for real progress tracking)
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setState(prev => ({
           ...prev,
           uploadProgress: Math.min(prev.uploadProgress + 10, 90),
         }))
       }, 100)
 
-      const response = await fetch('/api/upload', {
+      const initResponse = await fetch('/api/upload', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'initiate',
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+        }),
       })
 
-      clearInterval(progressInterval)
+      const initData = await parseApiResponse<InitiateUploadResponse>(
+        initResponse,
+        'Upload failed'
+      )
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Upload failed')
+      const supabase = createClient()
+      const { error: uploadError } = await supabase.storage
+        .from(storageConfig.uploadBucket)
+        .uploadToSignedUrl(initData.storagePath, initData.token, file, {
+          cacheControl: '3600',
+          contentType: file.type,
+        })
+
+      if (uploadError) {
+        throw new Error(uploadError.message || 'Upload failed')
       }
 
-      const data: UploadResponse = await response.json()
+      const completeResponse = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'complete',
+          storagePath: initData.storagePath,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+        }),
+      })
+
+      const data = await parseApiResponse<UploadResponse>(
+        completeResponse,
+        'Upload failed'
+      )
 
       setState({
         uploadedImage: {
@@ -110,6 +152,10 @@ export function useUpload() {
         error: err instanceof Error ? err.message : 'Upload failed',
       }))
       return false
+    } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval)
+      }
     }
   }, [validateFile])
 

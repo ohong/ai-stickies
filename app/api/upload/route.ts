@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createAdminClient } from '@/src/lib/supabase/admin'
-import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
-import { storageConfig, sessionConfig } from '@/src/lib/config'
+import {
+  completeUpload,
+  initiateUpload,
+  uploadFile,
+  UploadServiceError,
+} from '@/src/lib/services/upload.service'
 
-interface UploadSuccessResponse {
+export const runtime = 'nodejs'
+
+interface UploadInitSuccessResponse {
+  sessionId: string
+  remainingGenerations: number
+  signedUrl: string
+  storagePath: string
+  token: string
+}
+
+interface UploadCompleteSuccessResponse {
   uploadId: string
   previewUrl: string
   sessionId: string
@@ -15,162 +27,74 @@ interface UploadErrorResponse {
   error: string
 }
 
+interface UploadInitRequest {
+  action: 'initiate'
+  fileName: string
+  mimeType: string
+  fileSize: number
+}
+
+interface UploadCompleteRequest {
+  action: 'complete'
+  storagePath: string
+  fileName: string
+  mimeType: string
+  fileSize: number
+}
+
 export async function POST(
   request: NextRequest
-): Promise<NextResponse<UploadSuccessResponse | UploadErrorResponse>> {
+): Promise<
+  NextResponse<UploadInitSuccessResponse | UploadCompleteSuccessResponse | UploadErrorResponse>
+> {
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    const contentType = request.headers.get('content-type') ?? ''
 
-    if (!file) {
+    if (contentType.includes('application/json')) {
+      const body = await request.json() as UploadInitRequest | UploadCompleteRequest
+
+      if (body.action === 'initiate') {
+        const result = await initiateUpload({
+          fileName: body.fileName,
+          mimeType: body.mimeType,
+          fileSize: body.fileSize,
+        })
+
+        return NextResponse.json(result)
+      }
+
+      if (body.action === 'complete') {
+        const result = await completeUpload({
+          storagePath: body.storagePath,
+          fileName: body.fileName,
+          mimeType: body.mimeType,
+          fileSize: body.fileSize,
+        })
+
+        return NextResponse.json(result)
+      }
+
+      return NextResponse.json({ error: 'Invalid upload action' }, { status: 400 })
+    }
+
+    const formData = await request.formData()
+    const file = formData.get('file')
+
+    if (!(file instanceof File)) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Validate file type
-    if (!storageConfig.allowedMimeTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'Invalid file type. Please upload a JPG, PNG, or WebP image.' },
-        { status: 400 }
-      )
-    }
-
-    // Validate file size
-    const maxSizeBytes = storageConfig.maxUploadSizeMb * 1024 * 1024
-    if (file.size > maxSizeBytes) {
-      return NextResponse.json(
-        { error: `File size must be less than ${storageConfig.maxUploadSizeMb}MB` },
-        { status: 400 }
-      )
-    }
-
-    const supabase = createAdminClient()
-    const cookieStore = await cookies()
-
-    // Get or create session
-    let sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value
-    let session = null
-
-    if (sessionId) {
-      const { data } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single()
-      session = data
-    }
-
-    if (!session) {
-      // Create new session
-      sessionId = crypto.randomUUID()
-      const { data: newSession, error: sessionError } = await supabase
-        .from('sessions')
-        .insert({
-          id: sessionId,
-          generation_count: 0,
-          max_generations: sessionConfig.maxGenerations,
-        })
-        .select()
-        .single()
-
-      if (sessionError) {
-        console.error('Session creation error:', sessionError)
-        return NextResponse.json(
-          { error: 'Failed to create session' },
-          { status: 500 }
-        )
-      }
-
-      session = newSession
-    }
-
-    // Check remaining generations
-    const remaining = session.max_generations - session.generation_count
-    if (remaining <= 0) {
-      return NextResponse.json(
-        { error: 'No generations remaining in this session' },
-        { status: 403 }
-      )
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now()
-    const extension = file.name.split('.').pop() || 'jpg'
-    const storagePath = `${sessionId}/${timestamp}.${extension}`
-
-    // Convert File to ArrayBuffer then to Uint8Array for upload
-    const arrayBuffer = await file.arrayBuffer()
-    const uint8Array = new Uint8Array(arrayBuffer)
-
-    // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from(storageConfig.uploadBucket)
-      .upload(storagePath, uint8Array, {
-        contentType: file.type,
-        upsert: false,
-      })
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError)
-      return NextResponse.json(
-        { error: 'Failed to upload file' },
-        { status: 500 }
-      )
-    }
-
-    // Create upload record
-    const { data: upload, error: dbError } = await supabase
-      .from('uploads')
-      .insert({
-        session_id: sessionId,
-        storage_path: storagePath,
-        original_filename: file.name,
-        mime_type: file.type,
-        size_bytes: file.size,
-      })
-      .select()
-      .single()
-
-    if (dbError) {
-      console.error('Database insert error:', dbError)
-      // Clean up uploaded file
-      await supabase.storage.from(storageConfig.uploadBucket).remove([storagePath])
-      return NextResponse.json(
-        { error: 'Failed to save upload record' },
-        { status: 500 }
-      )
-    }
-
-    // Update session last_active_at
-    await supabase
-      .from('sessions')
-      .update({ last_active_at: new Date().toISOString() })
-      .eq('id', sessionId)
-
-    // Get public URL for preview
-    const { data: urlData } = supabase.storage
-      .from(storageConfig.uploadBucket)
-      .getPublicUrl(storagePath)
-
-    // Create response with session cookie
-    const response = NextResponse.json({
-      uploadId: upload.id,
-      previewUrl: urlData.publicUrl,
-      sessionId: sessionId!,
-      remainingGenerations: remaining,
-    })
-
-    // Set session cookie
-    const expires = new Date()
-    expires.setDate(expires.getDate() + sessionConfig.sessionTtlDays)
-    response.cookies.set(SESSION_COOKIE_NAME, sessionId!, {
-      expires,
-      path: '/',
-      sameSite: 'lax',
-      httpOnly: true,
-    })
-
-    return response
+    const result = await uploadFile(file)
+    return NextResponse.json(result)
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    if (error instanceof UploadServiceError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
     console.error('Upload error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import type { Language, Provider, FidelityLevel } from '@/src/types/database'
+import { parseApiResponse } from '@/src/lib/utils/http'
 
 export interface GeneratedPreview {
   id: string
@@ -85,12 +86,10 @@ export function useGeneration() {
 
         clearInterval(progressInterval)
 
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Generation failed')
-        }
-
-        const data: GeneratePreviewsResponse = await response.json()
+        const data = await parseApiResponse<GeneratePreviewsResponse>(
+          response,
+          'Generation failed'
+        )
 
         setState({
           isGenerating: false,

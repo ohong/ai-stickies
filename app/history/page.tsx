@@ -7,6 +7,7 @@ import { ArrowLeft, Clock, Package, Loader2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
+import { parseApiResponse } from '@/src/lib/utils/http'
 
 interface HistoryItem {
   generationId: string
@@ -31,10 +32,12 @@ export default function HistoryPage() {
     async function fetchHistory() {
       try {
         const response = await fetch('/api/session')
-        if (!response.ok) throw new Error('Failed to load history')
-        const data = await response.json()
+        const data = await parseApiResponse<{
+          success: boolean
+          data?: { history?: HistoryItem[] }
+        }>(response, 'Failed to load history')
         if (data.success) {
-          setHistory(data.data.history || [])
+          setHistory(data.data?.history || [])
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load')

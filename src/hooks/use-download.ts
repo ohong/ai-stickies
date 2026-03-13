@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { readApiError } from '@/src/lib/utils/http'
 
 interface DownloadState {
   isDownloading: boolean
@@ -22,8 +23,7 @@ export function useDownload() {
       const response = await fetch(`/api/packs/${packId}/download`)
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Download failed')
+        throw new Error(await readApiError(response, 'Download failed'))
       }
 
       const blob = await response.blob()
@@ -50,8 +50,7 @@ export function useDownload() {
       const response = await fetch(`/api/session/download-all?generationId=${generationId}`)
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Download failed')
+        throw new Error(await readApiError(response, 'Download failed'))
       }
 
       const blob = await response.blob()
@@ -102,8 +101,7 @@ export function useDownload() {
       const response = await fetch(`/api/session/marketplace-export?generationId=${generationId}`)
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Export failed')
+        throw new Error(await readApiError(response, 'Export failed'))
       }
 
       const blob = await response.blob()

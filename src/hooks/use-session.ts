@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { sessionCounterState$ } from '@/src/lib/state/session-counter'
+import { parseApiResponse } from '@/src/lib/utils/http'
 
 interface GenerationHistoryItem {
   generationId: string
@@ -50,9 +51,12 @@ export function useSession() {
 
     try {
       const response = await fetch('/api/session')
-      const json: SessionResponse = await response.json()
+      const json = await parseApiResponse<SessionResponse>(
+        response,
+        'Failed to fetch session'
+      )
 
-      if (!response.ok || !json.success || !json.data) {
+      if (!json.success || !json.data) {
         throw new Error(json.error ?? 'Failed to fetch session')
       }
 
@@ -71,6 +75,7 @@ export function useSession() {
       sessionCounterState$.remaining.set(json.data.remainingGenerations)
       sessionCounterState$.total.set(json.data.maxGenerations)
     } catch (err) {
+      sessionCounterState$.remaining.set(0)
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -108,6 +113,6 @@ export function useSession() {
     ...state,
     refresh,
     decrementGenerations,
-    canGenerate: state.remainingGenerations > 0,
+    canGenerate: !state.error && state.remainingGenerations > 0,
   }
 }

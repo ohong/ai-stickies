@@ -13,6 +13,7 @@ import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
 import { useStyleSelection } from '@/src/hooks/use-style-selection'
 import type { GeneratedPreview } from '@/src/hooks/use-generation'
+import { parseApiResponse, readApiError } from '@/src/lib/utils/http'
 
 interface GenerationData {
   generation: {
@@ -57,10 +58,10 @@ function StylesContent() {
     async function fetchGeneration() {
       try {
         const response = await fetch(`/api/generations/${generationId}`)
-        if (!response.ok) {
-          throw new Error('Failed to load generation')
-        }
-        const data = await response.json()
+        const data = await parseApiResponse<GenerationData>(
+          response,
+          'Failed to load generation'
+        )
         setGenerationData(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load')
@@ -88,8 +89,9 @@ function StylesContent() {
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to start pack generation')
+        throw new Error(
+          await readApiError(response, 'Failed to start pack generation')
+        )
       }
 
       router.push(`/create/results?generationId=${generationId}`)

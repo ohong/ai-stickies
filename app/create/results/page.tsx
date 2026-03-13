@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
 import { useDownload } from '@/src/hooks/use-download'
+import { parseApiResponse } from '@/src/lib/utils/http'
 import { StickerPackCard, StickerPackCardSkeleton } from '@/src/components/results/sticker-pack-card'
 import { StickerModal } from '@/src/components/results/sticker-modal'
 import { DownloadAllButton } from '@/src/components/results/download-buttons'
@@ -78,11 +79,10 @@ function ResultsContent() {
     async function fetchResults() {
       try {
         const response = await fetch(`/api/generations/${generationId}/results`)
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to load results')
-        }
-        const data = await response.json()
+        const data = await parseApiResponse<ResultsData>(
+          response,
+          'Failed to load results'
+        )
         setResultsData(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load')

@@ -38,6 +38,7 @@ export default function CreatePage() {
     remainingGenerations,
     maxGenerations,
     isLoading: sessionLoading,
+    error: sessionError,
     canGenerate,
     decrementGenerations,
   } = useSession()
@@ -69,7 +70,7 @@ export default function CreatePage() {
   const isGenerateDisabled =
     !uploadedImage || isUploading || sessionLoading || !canGenerate || isGenerating
 
-  const displayError = uploadError || generationError
+  const displayError = uploadError || generationError || sessionError
 
   const handleClearError = () => {
     clearError()
@@ -172,7 +173,7 @@ export default function CreatePage() {
                 disabled={!canGenerate}
               />
             )}
-            {!canGenerate && !sessionLoading && (
+            {!canGenerate && !sessionLoading && !sessionError && (
               <p className="mt-4 text-sm text-amber-700 bg-amber-50 rounded-lg p-3 text-center">
                 You&apos;ve used all your free generations. Check back later.
               </p>
