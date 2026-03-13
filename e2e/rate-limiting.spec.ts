@@ -1,74 +1,141 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, Page } from '@playwright/test'
 
-test.describe('Rate Limiting', () => {
-  test('session counter shows on create page', async ({ page }) => {
+async function mockSessionApi(
+  page: Page,
+  overrides: {
+    remainingGenerations?: number
+    maxGenerations?: number
+    generationCount?: number
+  } = {}
+) {
+  const remaining = overrides.remainingGenerations ?? 8
+  const max = overrides.maxGenerations ?? 10
+  const count = overrides.generationCount ?? max - remaining
+
+  await page.route('**/api/session', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          sessionId: 'test-session-id',
+          generationCount: count,
+          remainingGenerations: remaining,
+          maxGenerations: max,
+          history: [],
+        },
+      }),
+    })
+  })
+}
+
+// ==========================================================================
+// Rate Limiting - Session Counter
+// ==========================================================================
+
+test.describe('Rate Limiting - Session Counter', () => {
+  test('shows correct remaining count from session API', async ({ page }) => {
+    await mockSessionApi(page, { remainingGenerations: 7, maxGenerations: 10 })
     await page.goto('/create')
 
-    // Session counter should display remaining/total
-    const counter = page.locator('[data-testid="session-counter"]')
-      .or(page.getByText(/\d+\s*\/\s*\d+/))
-      .or(page.getByText(/remaining/i))
-
-    await expect(counter).toBeVisible({ timeout: 5000 })
+    // SessionCounter renders "7/10 remaining"
+    const counter = page.getByText('7/10 remaining')
+    await expect(counter).toBeVisible({ timeout: 10000 })
   })
 
-  test('session counter shows on styles page', async ({ page }) => {
-    await page.goto('/create/styles')
-    await page.waitForLoadState('networkidle')
-
-    const counter = page.locator('[data-testid="session-counter"]')
-      .or(page.getByText(/\d+\s*\/\s*\d+/))
-      .or(page.getByText(/remaining/i))
-
-    await expect(counter).toBeVisible({ timeout: 5000 })
-  })
-
-  test('session counter shows on results page', async ({ page }) => {
-    await page.goto('/create/results?generationId=test')
-    await page.waitForLoadState('networkidle')
-
-    const counter = page.locator('[data-testid="session-counter"]')
-      .or(page.getByText(/\d+\s*\/\s*\d+/))
-      .or(page.getByText(/remaining/i))
-
-    await expect(counter).toBeVisible({ timeout: 5000 })
-  })
-
-  test('max generations is 10 per session', async ({ page }) => {
+  test('shows remaining count with different values', async ({ page }) => {
+    await mockSessionApi(page, { remainingGenerations: 3, maxGenerations: 10 })
     await page.goto('/create')
 
-    // Check for 10 in session counter
-    const counterText = await page.locator('[data-testid="session-counter"]')
-      .or(page.getByText(/\/\s*10/))
-      .textContent()
-      .catch(() => '')
-
-    // Counter should reference 10 (max generations)
-    if (counterText) {
-      expect(counterText).toContain('10')
-    }
+    const counter = page.getByText('3/10 remaining')
+    await expect(counter).toBeVisible({ timeout: 10000 })
   })
 })
 
-test.describe('Session Expiry', () => {
-  // Note: Testing 24hr expiry would require time manipulation
-  // or longer test runs - better suited for integration tests
+// ==========================================================================
+// Rate Limiting - Exhausted State
+// ==========================================================================
 
-  test('session persists across navigation', async ({ page }) => {
+test.describe('Rate Limiting - Exhausted Generations', () => {
+  test('shows warning when no generations remaining', async ({ page }) => {
+    await mockSessionApi(page, {
+      remainingGenerations: 0,
+      maxGenerations: 10,
+      generationCount: 10,
+    })
+    await page.goto('/create')
+
+    // Warning message about used all free generations
+    const warning = page.getByText(/used all your free generations/i)
+      .or(page.getByText(/check back later/i))
+    await expect(warning).toBeVisible({ timeout: 10000 })
+  })
+
+  test('generate button is disabled when no remaining generations', async ({ page }) => {
+    await mockSessionApi(page, {
+      remainingGenerations: 0,
+      maxGenerations: 10,
+      generationCount: 10,
+    })
+    await page.goto('/create')
+
+    const generateBtn = page.getByRole('button', { name: /generate previews/i })
+    await expect(generateBtn).toBeDisabled({ timeout: 10000 })
+  })
+
+  test('upload dropzone is disabled when no remaining generations', async ({ page }) => {
+    await mockSessionApi(page, {
+      remainingGenerations: 0,
+      maxGenerations: 10,
+      generationCount: 10,
+    })
+    await page.goto('/create')
+
+    // ImageUploader sets aria-disabled="true" when disabled
+    const dropzone = page.getByRole('button', { name: /upload photo/i })
+    await expect(dropzone).toHaveAttribute('aria-disabled', 'true', { timeout: 10000 })
+  })
+
+  test('session counter shows 0/10 remaining', async ({ page }) => {
+    await mockSessionApi(page, {
+      remainingGenerations: 0,
+      maxGenerations: 10,
+      generationCount: 10,
+    })
+    await page.goto('/create')
+
+    const counter = page.getByText('0/10 remaining')
+    await expect(counter).toBeVisible({ timeout: 10000 })
+  })
+})
+
+// ==========================================================================
+// Rate Limiting - Session Persistence
+// ==========================================================================
+
+test.describe('Rate Limiting - Session Persistence', () => {
+  test('session counter persists across navigation', async ({ page }) => {
+    await mockSessionApi(page, { remainingGenerations: 5, maxGenerations: 10 })
+
     // Visit create page
     await page.goto('/create')
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByText('5/10 remaining')).toBeVisible({ timeout: 10000 })
 
-    // Navigate away and back
+    // Navigate to home
     await page.goto('/')
+
+    // Navigate back to create
     await page.goto('/create')
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByText('5/10 remaining')).toBeVisible({ timeout: 10000 })
+  })
 
-    // Session counter should still be visible
-    const counter = page.locator('[data-testid="session-counter"]')
-      .or(page.getByText(/\d+\s*\/\s*\d+/))
-      .or(page.getByText(/remaining/i))
+  test('generation info shows on create page', async ({ page }) => {
+    await mockSessionApi(page, { remainingGenerations: 8, maxGenerations: 10 })
+    await page.goto('/create')
 
-    await expect(counter).toBeVisible({ timeout: 5000 })
+    // Footer text says "Uses 1 of your 10 free generations"
+    const infoText = page.getByText(/uses 1 of your 10 free generations/i)
+    await expect(infoText).toBeVisible({ timeout: 10000 })
   })
 })

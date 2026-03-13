@@ -9,11 +9,6 @@ async function readResponseBody<T>(response: Response): Promise<T | string | nul
     return null
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-  if (contentType.includes('application/json')) {
-    return JSON.parse(text) as T
-  }
-
   try {
     return JSON.parse(text) as T
   } catch {

@@ -4,7 +4,7 @@
 
 // Individual providers
 export * as flux from './flux'
-export * as gemini from './gemini'
+export * as fal from './fal'
 export * as fireworks from './fireworks'
 
 // Unified provider interface

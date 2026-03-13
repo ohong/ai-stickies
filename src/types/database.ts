@@ -1,7 +1,7 @@
 export type Language = 'en' | 'ja' | 'zh-TW' | 'zh-CN' | 'th' | 'id' | 'ko'
 export type FidelityLevel = 'high' | 'stylized' | 'abstract' | 'chibi' | 'minimalist'
 export type GenerationStatus = 'pending' | 'processing' | 'completed' | 'failed'
-export type Provider = 'gemini' | 'flux'
+export type Provider = 'fal' | 'flux'
 
 export interface Session {
   id: string

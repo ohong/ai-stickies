@@ -169,7 +169,7 @@ async function generateSinglePreview(
     prompt,
     referenceImage: input.referenceImageBase64,
     referenceImageMimeType: input.mimeType,
-    provider: input.provider as 'flux' | 'gemini' | undefined,
+    provider: input.provider as 'flux' | 'fal' | undefined,
     width: generationConfig.imageWidth,
     height: generationConfig.imageHeight,
   })

@@ -129,11 +129,16 @@ async function getOrCreateSessionContext(): Promise<SessionContext> {
     session = data
   }
 
-  await setSessionCookie(sessionId)
+  // After the block above, sessionId and session are guaranteed to be set:
+  // either from the cookie lookup or from the newly created session.
+  const resolvedSessionId = sessionId!
+  const resolvedSession = session!
+
+  await setSessionCookie(resolvedSessionId)
 
   return {
-    session,
-    sessionId,
+    session: resolvedSession,
+    sessionId: resolvedSessionId,
     supabase,
   }
 }

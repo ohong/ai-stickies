@@ -48,8 +48,8 @@ export const supabaseConfig = {
 export const aiConfig = {
   bflApiKey: process.env.BFL_API_KEY ?? '',
   bflModel: process.env.BFL_MODEL ?? 'flux-2-pro', // FLUX.2: flux-2-pro
-  geminiApiKey: process.env.GEMINI_API_KEY ?? '',
-  geminiModel: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-image',
+  falApiKey: process.env.FAL_API_KEY ?? '',
+  falModel: process.env.FAL_MODEL ?? 'fal-ai/nano-banana-2',
   fireworksApiKey: process.env.FIREWORKS_API_KEY ?? '',
 }
 
@@ -81,7 +81,7 @@ export const generationConfig = {
 // Feature flags
 export const featureFlags = {
   enableFlux: process.env.ENABLE_FLUX !== 'false', // default true (enabled if BFL_API_KEY exists)
-  enableGemini: process.env.ENABLE_GEMINI !== 'false', // default true
+  enableFal: process.env.ENABLE_FAL !== 'false', // default true
   enableMarketplaceExport: process.env.ENABLE_MARKETPLACE_EXPORT === 'true',
 }
 
@@ -92,7 +92,7 @@ export function validateConfig(): void {
   supabaseConfig.anonKey
 
   // Warn about missing AI keys
-  if (!aiConfig.bflApiKey && !aiConfig.geminiApiKey) {
+  if (!aiConfig.bflApiKey && !aiConfig.falApiKey) {
     console.warn('Warning: No AI provider API keys configured')
   }
 }

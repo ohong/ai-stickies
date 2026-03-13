@@ -7,7 +7,7 @@ import { aiConfig } from '../config'
 import type { StyleConfig, Language, EmotionConfig } from '../../types'
 
 const FIREWORKS_API_BASE = 'https://api.fireworks.ai/inference/v1'
-const MODEL = 'accounts/fireworks/models/llama-v3p1-70b-instruct'
+const MODEL = 'accounts/fireworks/models/kimi-k2p5'
 
 export interface StickerPrompt {
   emotion: string

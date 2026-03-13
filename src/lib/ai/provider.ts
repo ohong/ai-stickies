@@ -1,17 +1,17 @@
 /**
  * Unified AI provider interface
- * Abstracts FLUX and Gemini behind common interface
+ * Abstracts FLUX and Fal.ai behind common interface
  */
 
 import * as flux from './flux'
-import * as gemini from './gemini'
+import * as fal from './fal'
 import { featureFlags } from '../config'
 
-export type ImageProvider = 'flux' | 'gemini'
+export type ImageProvider = 'flux' | 'fal'
 
 export interface GenerateImageOptions {
   prompt: string
-  referenceImage?: string // base64 for Gemini, URL or base64 for FLUX
+  referenceImage?: string // base64 for Fal, URL or base64 for FLUX
   referenceImageMimeType?: string
   provider?: ImageProvider
   width?: number
@@ -20,7 +20,7 @@ export interface GenerateImageOptions {
 
 export interface GenerateImageResult {
   imageUrl?: string // FLUX returns URL
-  imageBase64?: string // Gemini returns base64
+  imageBase64?: string // Fal returns base64
   mimeType?: string
   provider: ImageProvider
 }
@@ -40,19 +40,19 @@ export class ProviderError extends Error {
  * Get default provider based on config and availability
  */
 export function getDefaultProvider(): ImageProvider {
-  // Prefer FLUX if enabled and available
+  // Prefer Fal (nano-banana-2) if enabled and available
+  if (featureFlags.enableFal && fal.isFalAvailable()) {
+    return 'fal'
+  }
+
+  // Fall back to FLUX
   if (featureFlags.enableFlux && flux.isFluxAvailable()) {
     return 'flux'
   }
 
-  // Fall back to Gemini
-  if (featureFlags.enableGemini && gemini.isGeminiAvailable()) {
-    return 'gemini'
-  }
-
   throw new ProviderError(
-    'No image provider available. Configure BFL_API_KEY or GEMINI_API_KEY.',
-    'flux',
+    'No image provider available. Configure FAL_API_KEY or BFL_API_KEY.',
+    'fal',
     'NO_PROVIDER'
   )
 }
@@ -67,8 +67,8 @@ export function getAvailableProviders(): ImageProvider[] {
     providers.push('flux')
   }
 
-  if (featureFlags.enableGemini && gemini.isGeminiAvailable()) {
-    providers.push('gemini')
+  if (featureFlags.enableFal && fal.isFalAvailable()) {
+    providers.push('fal')
   }
 
   return providers
@@ -86,7 +86,7 @@ export async function generateImage(
     if (provider === 'flux') {
       return await generateWithFlux(options)
     } else {
-      return await generateWithGemini(options)
+      return await generateWithFal(options)
     }
   } catch (error) {
     // Wrap in ProviderError if not already
@@ -119,14 +119,14 @@ async function generateWithFlux(
   }
 }
 
-async function generateWithGemini(
+async function generateWithFal(
   options: GenerateImageOptions
 ): Promise<GenerateImageResult> {
-  if (!gemini.isGeminiAvailable()) {
-    throw new ProviderError('Gemini not available', 'gemini', 'NOT_AVAILABLE')
+  if (!fal.isFalAvailable()) {
+    throw new ProviderError('Fal not available', 'fal', 'NOT_AVAILABLE')
   }
 
-  const result = await gemini.generateImageWithRetry({
+  const result = await fal.generateImageWithRetry({
     prompt: options.prompt,
     referenceImage: options.referenceImage,
     referenceImageMimeType: options.referenceImageMimeType,
@@ -135,7 +135,7 @@ async function generateWithGemini(
   return {
     imageBase64: result.imageBase64,
     mimeType: result.mimeType,
-    provider: 'gemini',
+    provider: 'fal',
   }
 }
 
