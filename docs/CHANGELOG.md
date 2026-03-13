@@ -27,13 +27,23 @@
 
 ### Bug Fixes
 
+- **Fix download/export crash on missing sticker files** — All four download routes (`/api/packs/{packId}/download`, `/api/packs/{packId}/export`, `/api/session/download-all`, `/api/session/marketplace-export`) threw unhandled errors when a sticker record existed in the DB but the file was missing from Supabase Storage. All routes now skip missing files with `console.warn`, filter null results, and return appropriate error responses when no files are available.
+- **Fix upload size limit errors** — Sticker previews from nano-banana-2 exceeded the 500KB Supabase Storage bucket limit. Fixed by processing images through `processForLine()` (resize to 370x320, compress PNG) before upload, and requesting 0.5K resolution from Fal.ai to generate smaller source images.
 - **Fix React render-phase state update warning** — `decrementGenerations` in `useSession` was calling `sessionCounterState$.remaining.set()` inside a `setState` updater, which triggered a Legend State observable update during React's render phase. Moved the observable sync outside the updater. (`src/hooks/use-session.ts`)
+- **Fix JSON parsing crash in production upload flow** — `readResponseBody` in `src/lib/utils/http.ts` threw an unhandled `SyntaxError` when the server returned a non-JSON body (e.g. "Internal Server Error") with a `content-type: application/json` header. Fixed by consolidating to a single try/catch path.
+- **Fix TypeScript errors in upload service** — `getOrCreateSessionContext()` in `upload.service.ts` had 3 type errors from unnarrowable types. Resolved by extracting to `resolvedSessionId` / `resolvedSession` after guard logic.
 
-- **Fix JSON parsing crash in production upload flow** — `readResponseBody` in `src/lib/utils/http.ts` threw an unhandled `SyntaxError` when the server returned a non-JSON body (e.g. "Internal Server Error") with a `content-type: application/json` header. This produced the user-facing error `Unexpected token 'I', "Internal S"... is not valid JSON`. Fixed by consolidating to a single try/catch path so plain-text responses fall through gracefully.
-- **Fix TypeScript errors in upload service** — `getOrCreateSessionContext()` in `upload.service.ts` had 3 type errors where `sessionId` (`string | undefined`) and `session` (`Session | null`) couldn't be narrowed after conditional blocks. Resolved by extracting to `resolvedSessionId` / `resolvedSession` after the guard logic.
+### Changed
+
+- **Fal.ai image optimization** — Requests 0.5K resolution (512x512) and JPEG output from nano-banana-2, reducing image generation cost by 25% ($0.08 to $0.06/image) while remaining sufficient for 370x320 LINE stickers.
+- **Create page UX** — Progressive disclosure (customization form appears after photo upload), single-column stacked layout, inline generation progress instead of full-page takeover, compact image uploader, errors shown near their source.
+- **Generation progress component** — Compact horizontal layout (spinner + status + percentage in one row) with `aria-live="polite"` for accessibility.
+- **UI refinements** — Updated dialog, sticker modal, sticker pack card, sticker thumbnail, style preview card, and results page components for consistency and compactness.
 
 ### Added
 
+- **Per-route metadata** — Title template (`%s | AI Stickies`), `robots`, `theme-color`, `apple-touch-icon`, and per-page layouts with unique titles for `/create`, `/create/styles`, `/create/results`, and `/history`.
+- **Cost estimation script** (`scripts/estimate-cost.ts`) — Calculates fully loaded cost per sticker pack (LLM + image generation). Current estimate: ~$0.90/pack with Fireworks Kimi K2.5 + Fal.ai nano-banana-2 at 0.5K.
 - **`.env.example`** — Documents all 18 environment variables grouped by category (Supabase, AI providers, session, storage, generation, feature flags). Uses current Supabase key naming: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `SUPABASE_SECRET_KEY`.
 - **Full unit/integration test suite (144 tests)** using Vitest + Testing Library:
   - `src/__tests__/utils/http.test.ts` (24 tests) — `parseApiResponse` and `readApiError`, including regression test for the JSON parsing crash.
@@ -57,4 +67,4 @@
 - **N+1 query in session API** — `GET /api/session` calls `getStylePreviewCount` per generation instead of a batched query.
 - **No max limit on selectedStyleIds** — `POST /api/generate/packs` doesn't cap the array length.
 - **Results errors always empty** — `GET /api/generations/{id}/results` returns `errors: []` despite collecting errors server-side.
-- **Brittle download endpoints** — Pack/sticker download fails entirely if any single sticker storage fetch fails (no partial results).
+- **Missing og-image.png** — `app/layout.tsx` references `/og-image.png` in Open Graph metadata but the file doesn't exist in `/public`.
