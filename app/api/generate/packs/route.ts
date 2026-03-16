@@ -6,10 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import { createClient } from '@/src/lib/supabase/server'
 import { generateStickerPack, type PackGenerationResult } from '@/src/lib/services/pack.service'
 import { getPublicUrl } from '@/src/lib/utils/storage'
 import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
 import { storageConfig } from '@/src/lib/config'
+import { checkCredits, deductCredit } from '@/src/lib/services/credits.service'
 import type { FidelityLevel, StylePreview, Generation } from '@/src/types/database'
 
 interface GeneratePacksRequest {
@@ -88,7 +90,7 @@ export async function POST(
       )
     }
 
-    // Check remaining generations
+    // Check remaining generations (session-based limit)
     const remaining = session.max_generations - session.generation_count
     if (remaining < selectedStyleIds.length) {
       return NextResponse.json(
@@ -98,6 +100,28 @@ export async function POST(
         },
         { status: 403 }
       )
+    }
+
+    // Credit check for authenticated users
+    let authenticatedUserId: string | null = null
+    try {
+      const supabaseAuth = await createClient()
+      const { data: { user } } = await supabaseAuth.auth.getUser()
+      if (user) {
+        authenticatedUserId = user.id
+        const { hasCredits, balance } = await checkCredits(user.id)
+        if (!hasCredits) {
+          return NextResponse.json(
+            {
+              error: `No credits remaining. Current balance: ${balance}`,
+              code: 'INSUFFICIENT_CREDITS',
+            },
+            { status: 403 }
+          )
+        }
+      }
+    } catch {
+      // Auth not available (WS1 not merged yet) — continue with session-only limits
     }
 
     // Get generation record and verify it belongs to session
@@ -182,6 +206,19 @@ export async function POST(
         last_active_at: new Date().toISOString(),
       })
       .eq('id', sessionId)
+
+    // Deduct 1 credit per pack for authenticated users
+    if (authenticatedUserId) {
+      for (let i = 0; i < results.length; i++) {
+        try {
+          await deductCredit(authenticatedUserId)
+        } catch (err) {
+          console.error('Failed to deduct credit:', err)
+          // Don't fail the request — packs were already generated
+          break
+        }
+      }
+    }
 
     // Build response
     const packs = results.map(result => ({

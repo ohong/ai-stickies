@@ -78,6 +78,13 @@ export const generationConfig = {
   imageHeight: 320,
 }
 
+// Stripe configuration
+export const stripeConfig = {
+  secretKey: process.env.STRIPE_SECRET_KEY ?? '',
+  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
+  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
+}
+
 // Feature flags
 export const featureFlags = {
   enableFlux: process.env.ENABLE_FLUX !== 'false', // default true (enabled if BFL_API_KEY exists)
@@ -103,6 +110,7 @@ export const config = {
   session: sessionConfig,
   storage: storageConfig,
   generation: generationConfig,
+  stripe: stripeConfig,
   features: featureFlags,
   validate: validateConfig,
 }

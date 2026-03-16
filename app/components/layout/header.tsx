@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageContainer } from "./page-container";
+import { CreditsBadge } from "./credits-badge";
 
 export function Header() {
   return (
@@ -58,14 +59,23 @@ export function Header() {
             >
               FAQ
             </Link>
+            <Link
+              href="/pricing"
+              className="text-muted-foreground hover:text-foreground focus:outline-none focus-visible:text-foreground focus-visible:underline focus-visible:underline-offset-4"
+            >
+              Pricing
+            </Link>
           </div>
 
-          <Link
-            href="/create"
-            className="bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-semibold px-5 py-2.5 sm:py-2 rounded-full text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-transform"
-          >
-            Get Started
-          </Link>
+          <div className="flex items-center gap-3">
+            <CreditsBadge />
+            <Link
+              href="/create"
+              className="bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-semibold px-5 py-2.5 sm:py-2 rounded-full text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-transform"
+            >
+              Get Started
+            </Link>
+          </div>
         </nav>
       </PageContainer>
     </header>
