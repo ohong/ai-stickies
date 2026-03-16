@@ -45,13 +45,8 @@ export function AuthButtons() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button variant="ghost" size="sm" asChild>
-        <Link href="/login">Log in</Link>
-      </Button>
-      <Button size="sm" asChild>
-        <Link href="/signup">Sign up</Link>
-      </Button>
-    </div>
+    <Button size="sm" asChild>
+      <Link href="/login">Sign in</Link>
+    </Button>
   )
 }
