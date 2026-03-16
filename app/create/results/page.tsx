@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Sparkles, Store, Loader2, History } from 'lucide-react'
+import { ArrowLeft, Download, Sparkles, Store, Loader2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
@@ -13,7 +13,9 @@ import { StickerPackCard, StickerPackCardSkeleton } from '@/src/components/resul
 import { StickerModal } from '@/src/components/results/sticker-modal'
 import { DownloadAllButton } from '@/src/components/results/download-buttons'
 import { MarketplaceExportModal } from '@/src/components/results/marketplace-export-modal'
+import { PlatformExportModal } from '@/src/components/results/platform-export-modal'
 import { Confetti } from '@/src/components/results/confetti'
+import type { Platform } from '@/src/constants/platform-specs'
 
 interface StickerData {
   id: string
@@ -51,6 +53,8 @@ function ResultsContent() {
   const [currentStickerIndex, setCurrentStickerIndex] = useState(0)
   const [isStickerModalOpen, setIsStickerModalOpen] = useState(false)
   const [isMarketplaceModalOpen, setIsMarketplaceModalOpen] = useState(false)
+  const [isPlatformModalOpen, setIsPlatformModalOpen] = useState(false)
+  const [exportingPlatform, setExportingPlatform] = useState<Platform | null>(null)
 
   const {
     remainingGenerations,
@@ -66,6 +70,7 @@ function ResultsContent() {
     downloadAll,
     downloadSingleSticker,
     downloadMarketplaceZip,
+    downloadPlatformExport,
     clearError,
   } = useDownload()
 
@@ -121,6 +126,16 @@ function ResultsContent() {
       await downloadMarketplaceZip(generationId)
       setIsMarketplaceModalOpen(false)
     }
+  }
+
+  const handlePlatformExport = async (platform: Platform) => {
+    const packs = resultsData?.packs
+    if (!packs || packs.length === 0) return
+    setExportingPlatform(platform)
+    const pack = packs[0]
+    await downloadPlatformExport(pack.id, pack.styleName, platform)
+    setExportingPlatform(null)
+    setIsPlatformModalOpen(false)
   }
 
   if (isLoading) {
@@ -245,9 +260,14 @@ function ResultsContent() {
             packCount={packs.length}
           />
 
+          <Button variant="outline" size="lg" onClick={() => setIsPlatformModalOpen(true)} className="min-w-[200px]">
+            <Download className="size-4 mr-2" />
+            Export for...
+          </Button>
+
           <Button variant="outline" size="lg" onClick={() => setIsMarketplaceModalOpen(true)} className="min-w-[200px]">
             <Store className="size-4 mr-2" />
-            Export for LINE
+            LINE Marketplace
           </Button>
         </div>
 
@@ -272,6 +292,9 @@ function ResultsContent() {
             currentDownload={currentDownload}
             packCount={packs.length}
           />
+          <Button variant="outline" onClick={() => setIsPlatformModalOpen(true)} className="shrink-0">
+            <Download className="size-4" />
+          </Button>
           <Button variant="outline" onClick={() => setIsMarketplaceModalOpen(true)} className="shrink-0">
             <Store className="size-4" />
           </Button>
@@ -306,6 +329,14 @@ function ResultsContent() {
         isExporting={isDownloading && currentDownload === 'marketplace package'}
         stickerCount={totalStickers}
         packCount={packs.length}
+      />
+
+      <PlatformExportModal
+        isOpen={isPlatformModalOpen}
+        onClose={() => setIsPlatformModalOpen(false)}
+        onExport={handlePlatformExport}
+        isExporting={isDownloading && exportingPlatform !== null}
+        exportingPlatform={exportingPlatform}
       />
     </div>
   )
