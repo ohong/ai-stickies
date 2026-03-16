@@ -3,8 +3,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Your Sticker Pack",
   description:
-    "Download your AI-generated LINE sticker pack or export it for the LINE Creators Market.",
-  robots: { index: false },
+    "View, download, and export your AI-generated LINE sticker packs.",
+  openGraph: {
+    title: "Your Sticker Pack | AI Stickies",
+    description:
+      "View, download, and export your AI-generated LINE sticker packs.",
+  },
 };
 
 export default function ResultsLayout({
