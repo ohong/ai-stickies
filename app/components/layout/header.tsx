@@ -53,6 +53,12 @@ export function Header() {
               Styles
             </Link>
             <Link
+              href="/gallery"
+              className="text-muted-foreground hover:text-foreground focus:outline-none focus-visible:text-foreground focus-visible:underline focus-visible:underline-offset-4"
+            >
+              Gallery
+            </Link>
+            <Link
               href="#faq"
               className="text-muted-foreground hover:text-foreground focus:outline-none focus-visible:text-foreground focus-visible:underline focus-visible:underline-offset-4"
             >
