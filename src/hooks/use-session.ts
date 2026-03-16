@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/src/lib/supabase/client'
 import { sessionCounterState$ } from '@/src/lib/state/session-counter'
 import { parseApiResponse } from '@/src/lib/utils/http'
 
@@ -86,6 +87,16 @@ export function useSession() {
 
   useEffect(() => {
     fetchSession()
+
+    // Re-fetch session when auth state changes (e.g., after login/migration)
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchSession()
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [fetchSession])
 
   const refresh = useCallback(() => {

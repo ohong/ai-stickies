@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionIdFromCookie } from '@/src/lib/services/session.service'
 import { getGenerationWithPreviews } from '@/src/lib/services/generation.service'
+import { getUser } from '@/src/lib/services/auth.service'
 
 interface GenerationSuccessResponse {
   generation: {
@@ -29,9 +30,11 @@ export async function GET(
   try {
     const { generationId } = await params
 
-    // Verify session
+    // Verify access: check auth first, fall back to cookie session
+    const user = await getUser()
     const sessionId = await getSessionIdFromCookie()
-    if (!sessionId) {
+
+    if (!user && !sessionId) {
       return NextResponse.json(
         { error: 'No session found' },
         { status: 401 }
@@ -48,8 +51,10 @@ export async function GET(
       )
     }
 
-    // Verify ownership
-    if (result.generation.session_id !== sessionId) {
+    // Verify ownership: auth user or cookie session
+    const ownsViaAuth = user && result.generation.user_id === user.id
+    const ownsViaCookie = sessionId && result.generation.session_id === sessionId
+    if (!ownsViaAuth && !ownsViaCookie) {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }

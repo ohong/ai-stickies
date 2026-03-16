@@ -1,4 +1,5 @@
 // Services barrel export
+export * from './auth.service'
 export * from './session.service'
 export * from './prompt.service'
 export * from './pack.service'

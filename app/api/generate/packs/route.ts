@@ -6,11 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import { requireAuth, AuthError } from '@/src/lib/services/auth.service'
 import { generateStickerPack, type PackGenerationResult } from '@/src/lib/services/pack.service'
 import { getPublicUrl } from '@/src/lib/utils/storage'
 import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
 import { storageConfig } from '@/src/lib/config'
-import type { FidelityLevel, StylePreview, Generation } from '@/src/types/database'
+import type { StylePreview, Generation } from '@/src/types/database'
 
 interface GeneratePacksRequest {
   generationId: string
@@ -44,6 +45,19 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<GeneratePacksResponse | ErrorResponse>> {
   try {
+    // Auth gate: require login before generating packs
+    try {
+      await requireAuth()
+    } catch (err) {
+      if (err instanceof AuthError) {
+        return NextResponse.json(
+          { error: 'Login required to generate sticker packs', code: 'AUTH_REQUIRED' },
+          { status: 401 }
+        )
+      }
+      throw err
+    }
+
     const body = await request.json() as GeneratePacksRequest
     const { generationId, selectedStyleIds } = body
 

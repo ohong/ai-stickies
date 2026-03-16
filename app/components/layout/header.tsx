@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageContainer } from "./page-container";
+import { AuthButtons } from "./auth-buttons";
 
 export function Header() {
   return (
@@ -60,12 +61,15 @@ export function Header() {
             </Link>
           </div>
 
-          <Link
-            href="/create"
-            className="bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-semibold px-5 py-2.5 sm:py-2 rounded-full text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-transform"
-          >
-            Get Started
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/create"
+              className="bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-semibold px-5 py-2.5 sm:py-2 rounded-full text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-transform"
+            >
+              Get Started
+            </Link>
+            <AuthButtons />
+          </div>
         </nav>
       </PageContainer>
     </header>

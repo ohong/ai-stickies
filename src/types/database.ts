@@ -5,6 +5,7 @@ export type Provider = 'fal' | 'flux'
 
 export interface Session {
   id: string
+  user_id: string | null
   created_at: string
   last_active_at: string
   generation_count: number
@@ -24,6 +25,7 @@ export interface Upload {
 export interface Generation {
   id: string
   session_id: string
+  user_id: string | null
   upload_id: string | null
   style_description: string | null
   personal_context: string | null
@@ -32,6 +34,13 @@ export interface Generation {
   provider: Provider | null
   created_at: string
   completed_at: string | null
+}
+
+export interface Profile {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+  created_at: string
 }
 
 export interface StylePreview {
@@ -72,11 +81,19 @@ export interface Database {
     Tables: {
       sessions: {
         Row: Session
-        Insert: Omit<Session, 'created_at' | 'last_active_at'> & {
+        Insert: Omit<Session, 'created_at' | 'last_active_at' | 'user_id'> & {
           created_at?: string
           last_active_at?: string
+          user_id?: string | null
         }
         Update: Partial<Session>
+      }
+      profiles: {
+        Row: Profile
+        Insert: Omit<Profile, 'created_at'> & {
+          created_at?: string
+        }
+        Update: Partial<Profile>
       }
       uploads: {
         Row: Upload
@@ -88,10 +105,11 @@ export interface Database {
       }
       generations: {
         Row: Generation
-        Insert: Omit<Generation, 'id' | 'created_at' | 'completed_at'> & {
+        Insert: Omit<Generation, 'id' | 'created_at' | 'completed_at' | 'user_id'> & {
           id?: string
           created_at?: string
           completed_at?: string | null
+          user_id?: string | null
         }
         Update: Partial<Generation>
       }

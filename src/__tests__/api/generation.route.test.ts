@@ -13,6 +13,10 @@ vi.mock('@/src/lib/services/generation.service', () => ({
   getGenerationWithPreviews: vi.fn(),
 }))
 
+vi.mock('@/src/lib/services/auth.service', () => ({
+  getUser: vi.fn().mockResolvedValue(null),
+}))
+
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------

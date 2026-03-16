@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import { getUser } from '@/src/lib/services/auth.service'
 import { getPublicUrl } from '@/src/lib/utils/storage'
 import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
 import { storageConfig } from '@/src/lib/config'
@@ -46,27 +47,47 @@ export async function GET(
     const supabase = createAdminClient()
     const cookieStore = await cookies()
 
-    // Verify session
+    // Verify access: check auth first, fall back to cookie session
+    const user = await getUser()
     const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value
-    if (!sessionId) {
+
+    if (!user && !sessionId) {
       return NextResponse.json(
         { error: 'Session not found', code: 'NO_SESSION' },
         { status: 401 }
       )
     }
 
-    // Get session
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single()
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Invalid session', code: 'INVALID_SESSION' },
-        { status: 401 }
-      )
+    // Find session: by user_id if authenticated, by cookie otherwise
+    let session
+    if (user) {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('last_active_at', { ascending: false })
+        .limit(1)
+        .single()
+      session = data
+      if (error || !session) {
+        return NextResponse.json(
+          { error: 'Session not found', code: 'NO_SESSION' },
+          { status: 401 }
+        )
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('id', sessionId!)
+        .single()
+      session = data
+      if (error || !session) {
+        return NextResponse.json(
+          { error: 'Invalid session', code: 'INVALID_SESSION' },
+          { status: 401 }
+        )
+      }
     }
 
     // Verify generation belongs to session
@@ -74,7 +95,7 @@ export async function GET(
       .from('generations')
       .select('*')
       .eq('id', generationId)
-      .eq('session_id', sessionId)
+      .eq('session_id', session.id)
       .single()
 
     if (genError || !generation) {

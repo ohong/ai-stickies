@@ -1,3 +1,4 @@
+export { useAuth } from './use-auth'
 export { useUpload } from './use-upload'
 export { useSession } from './use-session'
 export { useGeneration } from './use-generation'

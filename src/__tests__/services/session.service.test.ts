@@ -108,6 +108,7 @@ function mockCookieStore(values: Record<string, string> = {}) {
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
     id: 'session-1',
+    user_id: null,
     created_at: '2026-01-01T00:00:00Z',
     last_active_at: '2026-01-01T00:00:00Z',
     generation_count: 3,
@@ -120,6 +121,7 @@ function makeGeneration(overrides: Partial<Generation> = {}): Generation {
   return {
     id: 'gen-1',
     session_id: 'session-1',
+    user_id: null,
     upload_id: 'upload-1',
     style_description: null,
     personal_context: null,

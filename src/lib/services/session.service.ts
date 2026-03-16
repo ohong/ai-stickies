@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import { getUser } from '@/src/lib/services/auth.service'
 import { sessionConfig } from '@/src/lib/config'
 import { SESSION_COOKIE_NAME, SESSION_MAX_AGE } from '@/src/lib/constants/session'
 import type { Session, Generation } from '@/src/types/database'
@@ -28,13 +29,14 @@ async function getSession(sessionId: string): Promise<Session | null> {
 /**
  * Create a new session in database
  */
-async function createSession(): Promise<Session> {
+async function createSession(userId?: string): Promise<Session> {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('sessions')
     .insert({
       generation_count: 0,
       max_generations: sessionConfig.maxGenerations,
+      ...(userId ? { user_id: userId } : {}),
     })
     .select()
     .single()
@@ -69,10 +71,27 @@ export async function getSessionIdFromCookie(): Promise<string | null> {
 }
 
 /**
- * Get or create session from cookies
- * Updates last_active_at for existing sessions
+ * Get or create session from cookies.
+ * If user is authenticated, look up session by user_id first.
+ * Falls back to cookie-based session for anonymous users.
  */
 export async function getOrCreateSession(): Promise<Session> {
+  // Check for authenticated user first
+  const user = await getUser()
+
+  if (user) {
+    const session = await getSessionByUserId(user.id)
+    if (session) {
+      await touchSession(session.id)
+      return session
+    }
+    // Authenticated user with no session — create one linked to their account
+    const newSession = await createSession(user.id)
+    await setSessionCookie(newSession.id)
+    return newSession
+  }
+
+  // Anonymous flow: use cookie-based session
   const cookieStore = await cookies()
   const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
@@ -90,6 +109,23 @@ export async function getOrCreateSession(): Promise<Session> {
   const newSession = await createSession()
   await setSessionCookie(newSession.id)
   return newSession
+}
+
+/**
+ * Get session by user_id
+ */
+async function getSessionByUserId(userId: string): Promise<Session | null> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('last_active_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (error || !data) return null
+  return data
 }
 
 /**
