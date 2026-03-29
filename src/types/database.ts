@@ -75,6 +75,38 @@ export interface Sticker {
   created_at: string
 }
 
+export interface Profile {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+  credit_balance: number
+  stripe_customer_id: string | null
+  created_at: string
+}
+
+export interface CreditPack {
+  id: string
+  name: string
+  credits: number
+  price_cents: number
+  stripe_price_id: string
+  is_active: boolean
+  created_at: string
+}
+
+export type PurchaseStatus = 'pending' | 'completed' | 'failed'
+
+export interface Purchase {
+  id: string
+  user_id: string
+  stripe_session_id: string
+  credit_pack_id: string
+  credits_purchased: number
+  amount_cents: number
+  status: PurchaseStatus
+  created_at: string
+}
+
 // Database table types for Supabase
 export interface Database {
   public: {
@@ -136,6 +168,31 @@ export interface Database {
           created_at?: string
         }
         Update: Partial<Sticker>
+      }
+      profiles: {
+        Row: Profile
+        Insert: Omit<Profile, 'created_at'> & {
+          created_at?: string
+          credit_balance?: number
+          stripe_customer_id?: string | null
+        }
+        Update: Partial<Profile>
+      }
+      credit_packs: {
+        Row: CreditPack
+        Insert: Omit<CreditPack, 'id' | 'created_at'> & {
+          id?: string
+          created_at?: string
+        }
+        Update: Partial<CreditPack>
+      }
+      purchases: {
+        Row: Purchase
+        Insert: Omit<Purchase, 'id' | 'created_at'> & {
+          id?: string
+          created_at?: string
+        }
+        Update: Partial<Purchase>
       }
     }
   }
