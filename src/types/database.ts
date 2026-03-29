@@ -60,6 +60,10 @@ export interface StickerPack {
   style_name: string
   zip_storage_path: string | null
   marketplace_zip_path: string | null
+  is_public: boolean
+  share_slug: string | null
+  view_count: number
+  is_featured: boolean
   created_at: string
 }
 
@@ -155,9 +159,12 @@ export interface Database {
       }
       sticker_packs: {
         Row: StickerPack
-        Insert: Omit<StickerPack, 'id' | 'created_at'> & {
+        Insert: Omit<StickerPack, 'id' | 'created_at' | 'is_public' | 'view_count' | 'is_featured'> & {
           id?: string
           created_at?: string
+          is_public?: boolean
+          view_count?: number
+          is_featured?: boolean
         }
         Update: Partial<StickerPack>
       }

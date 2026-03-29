@@ -14,6 +14,7 @@ import { StickerModal } from '@/src/components/results/sticker-modal'
 import { DownloadAllButton } from '@/src/components/results/download-buttons'
 import { MarketplaceExportModal } from '@/src/components/results/marketplace-export-modal'
 import { Confetti } from '@/src/components/results/confetti'
+import { ShareButtons } from '@/app/components/results/share-buttons'
 
 interface StickerData {
   id: string
@@ -223,16 +224,18 @@ function ResultsContent() {
 
         <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8">
           {packs.map((pack) => (
-            <StickerPackCard
-              key={pack.id}
-              packId={pack.id}
-              styleName={pack.styleName}
-              stickers={pack.stickers}
-              onStickerClick={(sticker, index) => handleStickerClick(sticker, index, pack.stickers)}
-              onDownload={() => handleDownloadPack(pack.id, pack.styleName)}
-              isDownloading={isDownloading}
-              currentDownload={currentDownload}
-            />
+            <div key={pack.id} className="space-y-2">
+              <StickerPackCard
+                packId={pack.id}
+                styleName={pack.styleName}
+                stickers={pack.stickers}
+                onStickerClick={(sticker, index) => handleStickerClick(sticker, index, pack.stickers)}
+                onDownload={() => handleDownloadPack(pack.id, pack.styleName)}
+                isDownloading={isDownloading}
+                currentDownload={currentDownload}
+              />
+              <ShareButtons packId={pack.id} shareSlug={null} packName={pack.styleName} />
+            </div>
           ))}
         </div>
 
