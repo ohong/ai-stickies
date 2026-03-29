@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Create Sticker Pack",
+  title: "Create Your Sticker Pack",
   description:
-    "Upload your photo and create a personalized LINE sticker pack with AI. Choose from 5 unique artistic styles.",
-  robots: { index: false },
+    "Upload a selfie, customize your style, and generate a pack of 10 unique LINE stickers with AI.",
+  openGraph: {
+    title: "Create Your Sticker Pack | AI Stickies",
+    description:
+      "Upload a selfie, customize your style, and generate a pack of 10 unique LINE stickers with AI.",
+  },
 };
 
 export default function CreateLayout({
