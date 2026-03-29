@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { readApiError } from '@/src/lib/utils/http'
+import type { Platform } from '@/src/constants/platform-specs'
 
 interface DownloadState {
   isDownloading: boolean
@@ -121,6 +122,33 @@ export function useDownload() {
     }
   }, [])
 
+  const downloadPlatformExport = useCallback(async (packId: string, packName: string, platform: Platform) => {
+    setState({ isDownloading: true, downloadError: null, currentDownload: `${platform} export` })
+
+    try {
+      const response = await fetch(`/api/packs/${packId}/export/${platform}`)
+
+      if (!response.ok) {
+        throw new Error(await readApiError(response, 'Export failed'))
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${packName.replace(/\s+/g, '-').toLowerCase()}-${platform}-stickers.zip`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      setState({ isDownloading: false, downloadError: null, currentDownload: null })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Export failed'
+      setState({ isDownloading: false, downloadError: message, currentDownload: null })
+    }
+  }, [])
+
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, downloadError: null }))
   }, [])
@@ -131,6 +159,7 @@ export function useDownload() {
     downloadAll,
     downloadSingleSticker,
     downloadMarketplaceZip,
+    downloadPlatformExport,
     clearError,
   }
 }

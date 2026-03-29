@@ -480,6 +480,55 @@ export async function processLinePack(
 }
 
 /**
+ * Convert image to WebP format with size constraint
+ * Used by WhatsApp and Telegram export services
+ *
+ * @param buffer - Source image buffer
+ * @param maxSizeKB - Maximum file size in KB
+ * @param width - Target width
+ * @param height - Target height
+ * @returns WebP buffer under the size limit
+ */
+export async function convertToWebP(
+  buffer: Buffer,
+  maxSizeKB: number,
+  width: number = 512,
+  height: number = 512
+): Promise<Buffer> {
+  console.log(`[image-processing] Converting to WebP (${width}x${height}, max ${maxSizeKB}KB)`)
+
+  let quality = 100
+  let result = await sharp(buffer)
+    .resize({ width, height, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .webp({ quality })
+    .toBuffer()
+
+  // Progressively reduce quality until under size limit
+  while (result.length > maxSizeKB * 1024 && quality > 10) {
+    quality -= 5
+    result = await sharp(buffer)
+      .resize({ width, height, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .webp({ quality })
+      .toBuffer()
+  }
+
+  // If still too large, reduce dimensions proportionally
+  if (result.length > maxSizeKB * 1024) {
+    const scaleFactor = Math.sqrt((maxSizeKB * 1024) / result.length)
+    const newWidth = Math.floor(width * scaleFactor)
+    const newHeight = Math.floor(height * scaleFactor)
+
+    result = await sharp(buffer)
+      .resize({ width: newWidth, height: newHeight, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .webp({ quality: 10 })
+      .toBuffer()
+  }
+
+  console.log(`[image-processing] WebP result: ${getBufferSizeKB(result).toFixed(1)}KB, quality=${quality}`)
+  return result
+}
+
+/**
  * Resize image for LINE marketplace specifications
  * LINE marketplace requires stickers at 370x320px max
  *
