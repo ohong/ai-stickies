@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
-import { SESSION_COOKIE_NAME, SESSION_MAX_AGE } from '@/src/lib/constants/session'
-import { storageConfig, sessionConfig } from '@/src/lib/config'
+import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
+import { storageConfig } from '@/src/lib/config'
+import { getSignedUrl } from '@/src/lib/utils/storage'
+import { getOrCreateSession, getSession, setSessionCookie } from '@/src/lib/services/session.service'
 import type { Session, Upload } from '@/src/types/database'
 
 interface UploadMetadata {
@@ -82,63 +84,13 @@ function inferExtension(fileName: string, mimeType: string): string {
   }
 }
 
-async function setSessionCookie(sessionId: string): Promise<void> {
-  const cookieStore = await cookies()
-  cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: SESSION_MAX_AGE,
-    path: '/',
-  })
-}
-
 async function getOrCreateSessionContext(): Promise<SessionContext> {
-  const cookieStore = await cookies()
   const supabase = createAdminClient()
-
-  let sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value
-  let session: Session | null = null
-
-  if (sessionId) {
-    const { data } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single()
-
-    session = data
-  }
-
-  if (!session) {
-    sessionId = crypto.randomUUID()
-    const { data, error } = await supabase
-      .from('sessions')
-      .insert({
-        id: sessionId,
-        generation_count: 0,
-        max_generations: sessionConfig.maxGenerations,
-      })
-      .select()
-      .single()
-
-    if (error || !data) {
-      throw new UploadServiceError('Failed to create session', 500)
-    }
-
-    session = data
-  }
-
-  // After the block above, sessionId and session are guaranteed to be set:
-  // either from the cookie lookup or from the newly created session.
-  const resolvedSessionId = sessionId!
-  const resolvedSession = session!
-
-  await setSessionCookie(resolvedSessionId)
+  const session = await getOrCreateSession()
 
   return {
-    session: resolvedSession,
-    sessionId: resolvedSessionId,
+    session,
+    sessionId: session.id,
     supabase,
   }
 }
@@ -152,13 +104,9 @@ async function getSessionContextFromCookie(): Promise<SessionContext> {
   }
 
   const supabase = createAdminClient()
-  const { data: session, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('id', sessionId)
-    .single()
+  const session = await getSession(sessionId)
 
-  if (error || !session) {
+  if (!session) {
     throw new UploadServiceError('Invalid session', 401)
   }
 
@@ -213,6 +161,31 @@ async function ensureUploadExists(
   }
 }
 
+async function getStoredObjectMetadata(
+  supabase: ReturnType<typeof createAdminClient>,
+  storagePath: string,
+  fallbackMimeType: string
+): Promise<{ mimeType: string; fileSize: number }> {
+  const { data, error } = await supabase.storage
+    .from(storageConfig.uploadBucket)
+    .download(storagePath)
+
+  if (error || !data) {
+    throw new UploadServiceError('Failed to verify uploaded file metadata', 500)
+  }
+
+  const mimeType = data.type || fallbackMimeType
+  const fileSize = data.size
+
+  validateUploadMetadata({
+    fileName: storagePath,
+    mimeType,
+    fileSize,
+  })
+
+  return { mimeType, fileSize }
+}
+
 async function getExistingUpload(
   supabase: ReturnType<typeof createAdminClient>,
   sessionId: string,
@@ -242,20 +215,16 @@ async function updateSessionActivity(
     .eq('id', sessionId)
 }
 
-function buildUploadResponse(
+async function buildUploadResponse(
   session: Session,
   sessionId: string,
   uploadId: string,
   storagePath: string,
   supabase: ReturnType<typeof createAdminClient>
-): CompleteUploadResult {
-  const { data } = supabase.storage
-    .from(storageConfig.uploadBucket)
-    .getPublicUrl(storagePath)
-
+): Promise<CompleteUploadResult> {
   return {
     uploadId,
-    previewUrl: data.publicUrl,
+    previewUrl: await getSignedUrl(supabase, storageConfig.uploadBucket, storagePath, 60 * 60),
     sessionId,
     remainingGenerations: getRemainingGenerations(session),
   }
@@ -275,7 +244,7 @@ async function persistUploadRecord(
   const existingUpload = await getExistingUpload(supabase, sessionId, input.storagePath)
   if (existingUpload) {
     await updateSessionActivity(supabase, sessionId)
-    return buildUploadResponse(
+    return await buildUploadResponse(
       session,
       sessionId,
       existingUpload.id,
@@ -284,8 +253,18 @@ async function persistUploadRecord(
     )
   }
 
+  let verifiedMetadata: Pick<FinalizeUploadInput, 'mimeType' | 'fileSize'> = {
+    mimeType: input.mimeType,
+    fileSize: input.fileSize,
+  }
+
   if (options.verifyObject) {
     await ensureUploadExists(supabase, input.storagePath)
+    verifiedMetadata = await getStoredObjectMetadata(
+      supabase,
+      input.storagePath,
+      input.mimeType
+    )
   }
 
   const { data: upload, error } = await supabase
@@ -294,8 +273,8 @@ async function persistUploadRecord(
       session_id: sessionId,
       storage_path: input.storagePath,
       original_filename: input.fileName,
-      mime_type: input.mimeType,
-      size_bytes: input.fileSize,
+      mime_type: verifiedMetadata.mimeType,
+      size_bytes: verifiedMetadata.fileSize,
     })
     .select()
     .single()
@@ -310,7 +289,7 @@ async function persistUploadRecord(
 
   await updateSessionActivity(supabase, sessionId)
 
-  return buildUploadResponse(session, sessionId, upload.id, input.storagePath, supabase)
+  return await buildUploadResponse(session, sessionId, upload.id, input.storagePath, supabase)
 }
 
 export async function initiateUpload(

@@ -4,12 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
-import { getUser } from '@/src/lib/services/auth.service'
-import { getPublicUrl } from '@/src/lib/utils/storage'
-import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
+import { getSignedUrl } from '@/src/lib/utils/storage'
 import { storageConfig } from '@/src/lib/config'
+import { getSession } from '@/src/lib/services/session.service'
+import {
+  AuthorizationError,
+  requireGenerationAccess,
+} from '@/src/lib/services/authorization.service'
+import { reconcileStalePackGeneration } from '@/src/lib/services/pack.service'
+import type { Generation } from '@/src/types/database'
 
 interface StickerResponse {
   id: string
@@ -23,14 +27,17 @@ interface StickerResponse {
 interface PackResponse {
   id: string
   styleName: string
+  stickersCompleted: number
   stickers: StickerResponse[]
   zipUrl: string | null
 }
 
 interface ResultsResponse {
+  status: string
   packs: PackResponse[]
   remainingGenerations: number
   errors: string[]
+  totalStickersPerPack: number
 }
 
 interface ErrorResponse {
@@ -45,64 +52,20 @@ export async function GET(
   try {
     const { generationId } = await params
     const supabase = createAdminClient()
-    const cookieStore = await cookies()
 
-    // Verify access: check auth first, fall back to cookie session
-    const user = await getUser()
-    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value
-
-    if (!user && !sessionId) {
+    const access = await requireGenerationAccess<Generation>(generationId)
+    const generation = access.generation
+    const session = await getSession(generation.session_id)
+    if (!session) {
       return NextResponse.json(
         { error: 'Session not found', code: 'NO_SESSION' },
         { status: 401 }
       )
     }
 
-    // Find session: by user_id if authenticated, by cookie otherwise
-    let session
-    if (user) {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('last_active_at', { ascending: false })
-        .limit(1)
-        .single()
-      session = data
-      if (error || !session) {
-        return NextResponse.json(
-          { error: 'Session not found', code: 'NO_SESSION' },
-          { status: 401 }
-        )
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('id', sessionId!)
-        .single()
-      session = data
-      if (error || !session) {
-        return NextResponse.json(
-          { error: 'Invalid session', code: 'INVALID_SESSION' },
-          { status: 401 }
-        )
-      }
-    }
-
-    // Verify generation belongs to session
-    const { data: generation, error: genError } = await supabase
-      .from('generations')
-      .select('*')
-      .eq('id', generationId)
-      .eq('session_id', session.id)
-      .single()
-
-    if (genError || !generation) {
-      return NextResponse.json(
-        { error: 'Generation not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+    const wasStale = await reconcileStalePackGeneration(generation)
+    if (wasStale) {
+      generation.status = 'failed'
     }
 
     // Get all sticker packs for this generation
@@ -121,6 +84,16 @@ export async function GET(
     }
 
     if (!packs || packs.length === 0) {
+      if (generation.status === 'processing' || generation.status === 'pending' || generation.status === 'failed') {
+        return NextResponse.json({
+          status: generation.status,
+          packs: [],
+          remainingGenerations: session.max_generations - session.generation_count,
+          errors: generation.status === 'failed' ? ['Pack generation failed'] : [],
+          totalStickersPerPack: 10,
+        })
+      }
+
       return NextResponse.json(
         { error: 'No packs found for this generation', code: 'NO_PACKS' },
         { status: 404 }
@@ -152,35 +125,52 @@ export async function GET(
     }
 
     // Build response
-    const packResponses: PackResponse[] = packs.map(pack => ({
-      id: pack.id,
-      styleName: pack.style_name,
-      stickers: (stickersByPack.get(pack.id) || []).map(sticker => ({
-        id: sticker.id,
-        sequenceNumber: sticker.sequence_number,
-        imageUrl: getPublicUrl(supabase, storageConfig.stickerBucket, sticker.storage_path),
-        emotion: sticker.emotion,
-        hasText: sticker.has_text,
-        textContent: sticker.text_content,
-      })),
-      zipUrl: pack.zip_storage_path
-        ? getPublicUrl(supabase, storageConfig.stickerBucket, pack.zip_storage_path)
-        : null,
+    const packResponses: PackResponse[] = await Promise.all(packs.map(async (pack) => {
+      const packStickers = stickersByPack.get(pack.id) || []
+      return {
+        id: pack.id,
+        styleName: pack.style_name,
+        stickersCompleted: packStickers.length,
+        stickers: await Promise.all(packStickers.map(async (sticker) => ({
+          id: sticker.id,
+          sequenceNumber: sticker.sequence_number,
+          imageUrl: await getSignedUrl(
+            supabase,
+            storageConfig.stickerBucket,
+            sticker.storage_path,
+            60 * 60
+          ),
+          emotion: sticker.emotion,
+          hasText: sticker.has_text,
+          textContent: sticker.text_content,
+        }))),
+        zipUrl: pack.zip_storage_path
+          ? await getSignedUrl(supabase, storageConfig.stickerBucket, pack.zip_storage_path, 60 * 60)
+          : null,
+      }
     }))
 
     const remainingGenerations = session.max_generations - session.generation_count
 
     return NextResponse.json({
+      status: generation.status,
       packs: packResponses,
       remainingGenerations,
       errors: [],
+      totalStickersPerPack: 10,
     })
   } catch (error) {
     console.error('Results fetch error:', error)
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status }
+      )
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
-

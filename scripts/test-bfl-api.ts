@@ -4,6 +4,7 @@
  */
 
 import * as flux from '../src/lib/ai/flux'
+import { getModel } from '../src/lib/ai/registry'
 
 async function main() {
   console.log('🧪 Testing BFL API (FLUX.2)...\n')
@@ -22,11 +23,14 @@ async function main() {
     console.log('   Prompt: "cute kawaii cat sticker, simple, white background"')
     console.log('')
 
-    const result = await flux.generateImage({
-      prompt: 'cute kawaii cat sticker, simple, white background',
-      width: 370,
-      height: 320,
-    })
+    const result = await flux.generateImage(
+      getModel('flux-2-pro'),
+      {
+        prompt: 'cute kawaii cat sticker, simple, white background',
+        width: 370,
+        height: 320,
+      }
+    )
 
     console.log('✅ Generation successful!')
     console.log(`   Image URL: ${result.imageUrl}`)

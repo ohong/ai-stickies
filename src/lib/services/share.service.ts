@@ -4,7 +4,7 @@
  */
 
 import { createAdminClient } from '../supabase/admin'
-import { getPublicUrl } from '../utils/storage'
+import { getSignedUrl } from '../utils/storage'
 import { storageConfig } from '../config'
 import type { StickerPack, Sticker } from '../../types/database'
 
@@ -19,9 +19,12 @@ const SLUG_LENGTH = 8
  * Generate a short, URL-safe slug
  */
 export function generateShareSlug(): string {
+  const randomValues = new Uint8Array(SLUG_LENGTH)
+  crypto.getRandomValues(randomValues)
+
   let slug = ''
   for (let i = 0; i < SLUG_LENGTH; i++) {
-    slug += SLUG_CHARS[Math.floor(Math.random() * SLUG_CHARS.length)]
+    slug += SLUG_CHARS[randomValues[i] % SLUG_CHARS.length]
   }
   return slug
 }
@@ -32,14 +35,15 @@ export function generateShareSlug(): string {
  */
 export async function publishPack(
   packId: string,
-  userId: string
+  sessionId: string | null,
+  authenticatedUserId?: string | null
 ): Promise<{ slug: string }> {
   const supabase = createAdminClient()
 
   // Fetch pack with generation for ownership check
   const { data: pack, error: fetchError } = await supabase
     .from('sticker_packs')
-    .select('*, generations!inner(session_id)')
+    .select('*, generations!inner(session_id, user_id)')
     .eq('id', packId)
     .single()
 
@@ -47,9 +51,13 @@ export async function publishPack(
     throw new Error('Pack not found')
   }
 
-  // Verify ownership: generation.session_id must match userId (session-based auth)
-  const generation = (pack as Record<string, unknown>).generations as { session_id: string }
-  if (generation.session_id !== userId) {
+  const generation = (pack as Record<string, unknown>).generations as {
+    session_id: string
+    user_id: string | null
+  }
+  const ownsViaSession = sessionId !== null && generation.session_id === sessionId
+  const ownsViaUser = authenticatedUserId != null && generation.user_id === authenticatedUserId
+  if (!ownsViaSession && !ownsViaUser) {
     throw new Error('Access denied')
   }
 
@@ -96,14 +104,15 @@ export async function publishPack(
  */
 export async function unpublishPack(
   packId: string,
-  userId: string
+  sessionId: string | null,
+  authenticatedUserId?: string | null
 ): Promise<void> {
   const supabase = createAdminClient()
 
   // Fetch pack with generation for ownership check
   const { data: pack, error: fetchError } = await supabase
     .from('sticker_packs')
-    .select('*, generations!inner(session_id)')
+    .select('*, generations!inner(session_id, user_id)')
     .eq('id', packId)
     .single()
 
@@ -111,8 +120,13 @@ export async function unpublishPack(
     throw new Error('Pack not found')
   }
 
-  const generation = (pack as Record<string, unknown>).generations as { session_id: string }
-  if (generation.session_id !== userId) {
+  const generation = (pack as Record<string, unknown>).generations as {
+    session_id: string
+    user_id: string | null
+  }
+  const ownsViaSession = sessionId !== null && generation.session_id === sessionId
+  const ownsViaUser = authenticatedUserId != null && generation.user_id === authenticatedUserId
+  if (!ownsViaSession && !ownsViaUser) {
     throw new Error('Access denied')
   }
 
@@ -145,12 +159,17 @@ export async function getPackBySlug(
     return null
   }
 
-  const stickers = (pack.stickers as Sticker[])
+  const stickers = await Promise.all((pack.stickers as Sticker[])
     .sort((a, b) => a.sequence_number - b.sequence_number)
-    .map((sticker) => ({
+    .map(async (sticker) => ({
       ...sticker,
-      imageUrl: getPublicUrl(supabase, storageConfig.stickerBucket, sticker.storage_path),
-    }))
+      imageUrl: await getSignedUrl(
+        supabase,
+        storageConfig.stickerBucket,
+        sticker.storage_path,
+        60 * 60
+      ),
+    })))
 
   return { ...pack, stickers } as PackWithStickers
 }
@@ -160,18 +179,11 @@ export async function getPackBySlug(
  */
 export async function incrementViewCount(packId: string): Promise<void> {
   const supabase = createAdminClient()
+  const { error } = await supabase.rpc('increment_view_count', {
+    p_pack_id: packId,
+  })
 
-  // Simple read-then-write increment
-  const { data } = await supabase
-    .from('sticker_packs')
-    .select('view_count')
-    .eq('id', packId)
-    .single()
-
-  if (data) {
-    await supabase
-      .from('sticker_packs')
-      .update({ view_count: (data.view_count ?? 0) + 1 })
-      .eq('id', packId)
+  if (error) {
+    throw new Error(`Failed to increment view count: ${error.message}`)
   }
 }

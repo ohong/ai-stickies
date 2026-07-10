@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useUpload } from '@/src/hooks/use-upload'
 
 // Mock config
@@ -78,6 +78,23 @@ describe('useUpload', () => {
     expect(result.current.uploadProgress).toBe(0)
     expect(result.current.isUploading).toBe(false)
     expect(result.current.error).toBeNull()
+  })
+
+  it('hydrates from an initial uploaded image', () => {
+    const { result } = renderHook(() => useUpload({
+      id: 'upload-1',
+      url: 'https://example.com/signed-photo.png?token=read',
+      filename: 'photo.png',
+      size: 2048,
+    }))
+
+    expect(result.current.uploadedImage).toEqual({
+      id: 'upload-1',
+      url: 'https://example.com/signed-photo.png?token=read',
+      filename: 'photo.png',
+      size: 2048,
+    })
+    expect(result.current.uploadProgress).toBe(0)
   })
 
   it('rejects invalid file type', async () => {

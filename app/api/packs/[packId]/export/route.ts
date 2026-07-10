@@ -7,8 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/src/lib/supabase/admin'
-import { getSessionIdFromCookie } from '@/src/lib/services/session.service'
 import { storageConfig } from '@/src/lib/config'
+import { getSignedUrl } from '@/src/lib/utils/storage'
 import { LINE_SPECS } from '@/src/constants/line-specs'
 import { createMarketplaceZip } from '@/src/lib/utils/zip'
 import {
@@ -16,6 +16,10 @@ import {
   createTabImage,
   getImageMetadata,
 } from '@/src/lib/services/image-processing.service'
+import {
+  AuthorizationError,
+  requirePackAccess,
+} from '@/src/lib/services/authorization.service'
 import type { Sticker, StickerPack, Generation } from '@/src/types/database'
 
 interface PackWithRelations extends StickerPack {
@@ -49,37 +53,18 @@ export async function POST(
   try {
     const { packId } = await params
 
-    // Verify session
-    const sessionId = await getSessionIdFromCookie()
-    if (!sessionId) {
-      return NextResponse.json({ error: 'No session found' }, { status: 401 })
-    }
-
     const supabase = createAdminClient()
 
-    // Fetch pack with stickers
-    const { data: pack, error: packError } = await supabase
-      .from('sticker_packs')
-      .select(`
+    const { pack } = await requirePackAccess<PackWithRelations>(
+      packId,
+      `
         *,
         stickers (*),
         generations!inner (*)
-      `)
-      .eq('id', packId)
-      .single()
+      `
+    )
 
-    if (packError || !pack) {
-      return NextResponse.json({ error: 'Pack not found' }, { status: 404 })
-    }
-
-    const packData = pack as unknown as PackWithRelations
-
-    // Verify ownership
-    if (packData.generations.session_id !== sessionId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
-
-    const stickers = packData.stickers
+    const stickers = pack.stickers
     if (!stickers || stickers.length < LINE_SPECS.pack.minStickers) {
       return NextResponse.json(
         { error: `Minimum ${LINE_SPECS.pack.minStickers} stickers required` },
@@ -177,7 +162,7 @@ export async function POST(
       stickers: stickerData,
       mainImage,
       tabImage,
-      packName: packData.style_name,
+      packName: pack.style_name,
     })
 
     // Update file size in requirements
@@ -189,7 +174,7 @@ export async function POST(
     }
 
     // Upload to storage
-    const marketplacePath = `${packData.generation_id}/${packId}/marketplace.zip`
+    const marketplacePath = `${pack.generation_id}/${packId}/marketplace.zip`
     const { error: uploadError } = await supabase.storage
       .from(storageConfig.stickerBucket)
       .upload(marketplacePath, zipBuffer, {
@@ -207,18 +192,22 @@ export async function POST(
       .update({ marketplace_zip_path: marketplacePath })
       .eq('id', packId)
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(storageConfig.stickerBucket)
-      .getPublicUrl(marketplacePath)
-
     return NextResponse.json({
-      marketplaceZipUrl: urlData.publicUrl,
+      marketplaceZipUrl: await getSignedUrl(
+        supabase,
+        storageConfig.stickerBucket,
+        marketplacePath,
+        60 * 60
+      ),
       requirements,
       submissionGuide: 'https://creator.line.me/en/howto/',
     })
   } catch (error) {
     console.error('Export error:', error)
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Export failed' },
       { status: 500 }

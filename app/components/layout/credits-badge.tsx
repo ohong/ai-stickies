@@ -24,7 +24,12 @@ export function CreditsBadge() {
         // Silently fail — user may not be logged in
       }
     }
+
     fetchBalance()
+    window.addEventListener('focus', fetchBalance)
+    return () => {
+      window.removeEventListener('focus', fetchBalance)
+    }
   }, [])
 
   if (balance === null) return null

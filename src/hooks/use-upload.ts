@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { storageConfig } from '@/src/lib/config'
 import { createClient } from '@/src/lib/supabase/client'
 import { parseApiResponse } from '@/src/lib/utils/http'
 
-interface UploadedImage {
+export interface UploadedImage {
   id: string
   url: string
   filename: string
@@ -34,13 +34,28 @@ interface InitiateUploadResponse {
   token: string
 }
 
-export function useUpload() {
+export function useUpload(initialImage?: UploadedImage | null) {
   const [state, setState] = useState<UploadState>({
-    uploadedImage: null,
+    uploadedImage: initialImage ?? null,
     uploadProgress: 0,
     isUploading: false,
     error: null,
   })
+
+  useEffect(() => {
+    if (!initialImage) return
+    setState((prev) => {
+      if (prev.uploadedImage?.id === initialImage.id) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        uploadedImage: initialImage,
+        uploadProgress: 100,
+      }
+    })
+  }, [initialImage])
 
   const validateFile = useCallback((file: File): string | null => {
     // Check file type

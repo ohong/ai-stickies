@@ -30,6 +30,7 @@ export function ImagePreview({
           src={imageUrl}
           alt="Uploaded preview"
           fill
+          unoptimized
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
         />

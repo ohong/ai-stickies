@@ -4,6 +4,7 @@
  */
 
 import { aiConfig } from '../config'
+import type { ModelEntry } from './registry'
 
 const FAL_API_BASE = 'https://fal.run'
 
@@ -32,6 +33,7 @@ export class FalError extends Error {
  * Generate image with Fal.ai nano-banana-2
  */
 export async function generateImage(
+  entry: ModelEntry,
   options: FalGenerationOptions
 ): Promise<FalResult> {
   if (!aiConfig.falApiKey) {
@@ -40,10 +42,8 @@ export async function generateImage(
 
   const { prompt, referenceImage, referenceImageMimeType } = options
 
-  const stickerPrompt = buildStickerPrompt(prompt, Boolean(referenceImage))
-
   const body: Record<string, unknown> = {
-    prompt: stickerPrompt,
+    prompt,
     resolution: '0.5K', // 512x512 — sufficient for 370x320 stickers, faster + cheaper (0.75x)
     aspect_ratio: '4:3', // closest to 370x320 (1.15:1)
     output_format: 'jpeg', // smaller downloads than PNG; processForLine converts to PNG later
@@ -55,7 +55,7 @@ export async function generateImage(
     body.image_url = `data:${mime};base64,${referenceImage}`
   }
 
-  const response = await fetch(`${FAL_API_BASE}/${aiConfig.falModel}`, {
+  const response = await fetch(`${FAL_API_BASE}/${entry.remoteModel}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -96,24 +96,6 @@ export async function generateImage(
 }
 
 /**
- * Build sticker-optimized prompt
- */
-function buildStickerPrompt(basePrompt: string, hasReference: boolean): string {
-  const prefix = hasReference
-    ? 'Create a LINE sticker based on this reference image. '
-    : 'Create a LINE sticker illustration. '
-
-  return `${prefix}${basePrompt}
-
-Requirements:
-- Square composition optimized for 370x320px
-- Transparent or simple solid background
-- Bold outlines for visibility at small size
-- Expressive and clear emotion/action
-- Clean, professional sticker art style`
-}
-
-/**
  * Check if Fal.ai is available
  */
 export function isFalAvailable(): boolean {
@@ -123,32 +105,3 @@ export function isFalAvailable(): boolean {
 /**
  * Retry wrapper with exponential backoff
  */
-export async function generateImageWithRetry(
-  options: FalGenerationOptions,
-  maxRetries = 3
-): Promise<FalResult> {
-  let lastError: Error | null = null
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await generateImage(options)
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Unknown error')
-
-      // Don't retry on config errors
-      if (error instanceof FalError) {
-        if (error.code === 'NO_API_KEY') {
-          throw error
-        }
-      }
-
-      // Exponential backoff
-      if (attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 1000
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-    }
-  }
-
-  throw lastError ?? new FalError('Generation failed after retries', 'MAX_RETRIES')
-}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { cn } from '@/src/lib/utils/cn'
 
 interface StickerThumbnailProps {
@@ -8,6 +9,7 @@ interface StickerThumbnailProps {
   emotion: string | null
   textContent: string | null
   onClick?: () => void
+  priority?: boolean
 }
 
 export function StickerThumbnail({
@@ -15,6 +17,7 @@ export function StickerThumbnail({
   emotion,
   textContent,
   onClick,
+  priority = false,
 }: StickerThumbnailProps) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -39,16 +42,18 @@ export function StickerThumbnail({
         <div className="absolute inset-0 bg-muted" />
       )}
 
-      <img
+      <Image
         src={imageUrl}
         alt={emotion || 'Sticker'}
         width={370}
         height={320}
+        unoptimized
+        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 180px"
         className={cn(
           'w-full h-full object-cover',
           isLoaded ? 'opacity-100' : 'opacity-0'
         )}
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
         onLoad={() => setIsLoaded(true)}
       />
 

@@ -5,7 +5,9 @@
 // Individual providers
 export * as flux from './flux'
 export * as fal from './fal'
+export * as openai from './openai'
 export * as fireworks from './fireworks'
+export * from './registry'
 
 // Unified provider interface
 export {

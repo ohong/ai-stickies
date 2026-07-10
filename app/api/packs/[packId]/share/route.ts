@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessionIdFromCookie } from '@/src/lib/services/session.service'
+import { getRequestActor } from '@/src/lib/services/authorization.service'
 import { publishPack, unpublishPack } from '@/src/lib/services/share.service'
 import { getShareUrl } from '@/src/lib/utils/share'
 
@@ -14,13 +14,13 @@ export async function POST(
   { params }: { params: Promise<{ packId: string }> }
 ): Promise<NextResponse> {
   try {
-    const sessionId = await getSessionIdFromCookie()
-    if (!sessionId) {
+    const actor = await getRequestActor()
+    if (!actor.sessionId && !actor.userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     const { packId } = await params
-    const { slug } = await publishPack(packId, sessionId)
+    const { slug } = await publishPack(packId, actor.sessionId, actor.userId)
 
     return NextResponse.json({
       slug,
@@ -38,13 +38,13 @@ export async function DELETE(
   { params }: { params: Promise<{ packId: string }> }
 ): Promise<NextResponse> {
   try {
-    const sessionId = await getSessionIdFromCookie()
-    if (!sessionId) {
+    const actor = await getRequestActor()
+    if (!actor.sessionId && !actor.userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     const { packId } = await params
-    await unpublishPack(packId, sessionId)
+    await unpublishPack(packId, actor.sessionId, actor.userId)
 
     return NextResponse.json({ success: true })
   } catch (error) {

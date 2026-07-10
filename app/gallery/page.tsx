@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Eye } from 'lucide-react'
 import { getPublicPacks } from '@/src/lib/services/gallery.service'
@@ -61,11 +62,12 @@ export default async function GalleryPage({ searchParams }: GalleryPageProps) {
                   <div className="grid grid-cols-2 gap-1 p-2">
                     {pack.thumbnails.map((url, i) => (
                       <div key={i} className="aspect-square rounded-lg overflow-hidden bg-secondary">
-                        <img
+                        <Image
                           src={url}
                           alt=""
                           width={185}
                           height={160}
+                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 185px"
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />

@@ -26,8 +26,7 @@ export function CreditPackCard({ pack, highlighted = false }: CreditPackCardProp
       if (!res.ok) {
         const data = await res.json()
         if (data.code === 'UNAUTHORIZED') {
-          // Redirect to login — WS1 will add the login page
-          window.location.href = '/login?redirect=/pricing'
+          window.location.href = '/login?next=/pricing'
           return
         }
         throw new Error(data.error ?? 'Checkout failed')

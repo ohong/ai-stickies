@@ -43,15 +43,6 @@ function jsonRequest(body: Record<string, unknown>): NextRequest {
   })
 }
 
-function formDataRequest(file: File): NextRequest {
-  const formData = new FormData()
-  formData.append('file', file)
-  return new NextRequest('http://localhost:3000/api/upload', {
-    method: 'POST',
-    body: formData,
-  })
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

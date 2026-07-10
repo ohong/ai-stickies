@@ -14,16 +14,16 @@ AI Stickies is a Next.js application that generates personalized messaging stick
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router), React 19, TypeScript
+- **Framework**: Next.js 16 (App Router), React 19, TypeScript
 - **Styling**: Tailwind CSS 4, Radix UI components
 - **State Management**: Legend State (for performance-critical features)
 - **Backend**: Supabase (PostgreSQL + Storage)
-- **AI Providers**: 
-  - FLUX.2 (primary image generation)
-  - Gemini 2.0 (alternative image generation)
-  - Fireworks AI (prompt optimization)
+- **AI Providers**:
+  - Image models are configured in `src/lib/ai/registry.ts`
+  - `IMAGE_MODEL` selects the default model (`nano-banana-2`, `nano-banana-pro`, `flux-2-pro`, `gpt-image`)
+  - Fireworks AI handles prompt optimization
 - **Package Manager**: Bun
-- **Testing**: Playwright (E2E tests)
+- **Testing**: Vitest (unit tests) + Playwright (E2E tests)
 
 ## Key Architecture Patterns
 
@@ -83,11 +83,11 @@ Reference `docs/LINE_SPECS.md` for exact specifications:
 ## Common Tasks
 
 ### Adding a New AI Provider
-1. Create provider file in `src/lib/ai/`
-2. Implement `ImageProvider` interface
-3. Add to `src/lib/ai/provider.ts` factory
+1. Add a model entry to `src/lib/ai/registry.ts`
+2. Reuse an existing adapter when possible (`fal`, `bfl`, `openai`)
+3. Add a new adapter in `src/lib/ai/` only for a new transport family
 4. Update environment variables
-5. Add tests in `scripts/test-providers.ts`
+5. Add/update tests and `scripts/test-providers.ts`
 
 ### Adding a New Sticker Style
 1. Update `src/constants/styles.ts`
@@ -102,6 +102,9 @@ Reference `docs/LINE_SPECS.md` for exact specifications:
 
 ## Testing
 
+### Unit Tests
+Run with: `bun run test`
+
 ### E2E Tests
 Located in `e2e/`:
 - `generation-flow.spec.ts` - Full generation workflow
@@ -109,7 +112,7 @@ Located in `e2e/`:
 - `download-flow.spec.ts` - Pack download functionality
 - `rate-limiting.spec.ts` - Rate limit enforcement
 
-Run with: `bun test:e2e`
+Run with: `bun run test:e2e`
 
 ### Manual Testing
 Use `scripts/` for quick validation:

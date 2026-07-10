@@ -29,8 +29,8 @@ export function Confetti() {
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion) {
-      setIsVisible(false)
-      return
+      const timer = setTimeout(() => setIsVisible(false), 0)
+      return () => clearTimeout(timer)
     }
 
     const newPieces: ConfettiPiece[] = Array.from({ length: 50 }, (_, i) => ({
@@ -41,10 +41,12 @@ export function Confetti() {
       color: colors[Math.floor(Math.random() * colors.length)],
       shape: Math.random() > 0.5 ? 'circle' : 'square',
     }))
-    setPieces(newPieces)
-
+    const startTimer = setTimeout(() => setPieces(newPieces), 0)
     const timer = setTimeout(() => setIsVisible(false), 4000)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(startTimer)
+      clearTimeout(timer)
+    }
   }, [])
 
   if (!isVisible) return null

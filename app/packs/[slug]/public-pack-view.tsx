@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useDownload } from '@/src/hooks/use-download'
@@ -25,11 +26,12 @@ export function PublicPackView({ pack, slug }: PublicPackViewProps) {
                 key={sticker.id}
                 className="relative aspect-square rounded-xl overflow-hidden bg-secondary border border-border"
               >
-                <img
+                <Image
                   src={sticker.imageUrl}
                   alt={sticker.emotion || 'Sticker'}
                   width={370}
                   height={320}
+                  sizes="(max-width: 640px) 30vw, (max-width: 768px) 22vw, 160px"
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />

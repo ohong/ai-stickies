@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import type { Generation } from '@/src/types/database'
 
 export interface CreditPack {
   id: string
@@ -37,39 +38,25 @@ export async function checkCredits(userId: string): Promise<{ hasCredits: boolea
 }
 
 /**
- * Deduct 1 credit from user's balance. Returns new balance.
- * Throws if balance is already 0.
+ * Deduct credits from user's balance atomically. Returns new balance.
+ * Throws if the balance is too low.
  */
-export async function deductCredit(userId: string): Promise<number> {
+export async function deductCredits(userId: string, amount: number): Promise<number> {
   const supabase = createAdminClient()
 
-  // Use rpc or manual read-then-write with a check
-  const { data: profile, error: fetchError } = await supabase
-    .from('profiles')
-    .select('credit_balance')
-    .eq('id', userId)
-    .single()
+  const { data, error } = await supabase.rpc('deduct_credits', {
+    p_user_id: userId,
+    p_amount: amount,
+  })
 
-  if (fetchError || !profile) {
-    throw new Error(`User not found: ${fetchError?.message ?? 'Unknown'}`)
+  if (error) {
+    if (error.message.includes('INSUFFICIENT_CREDITS')) {
+      throw new Error('Insufficient credits')
+    }
+    throw new Error(`Failed to deduct credits: ${error.message}`)
   }
 
-  if (profile.credit_balance <= 0) {
-    throw new Error('Insufficient credits')
-  }
-
-  const newBalance = profile.credit_balance - 1
-
-  const { error: updateError } = await supabase
-    .from('profiles')
-    .update({ credit_balance: newBalance })
-    .eq('id', userId)
-
-  if (updateError) {
-    throw new Error(`Failed to deduct credit: ${updateError.message}`)
-  }
-
-  return newBalance
+  return Number(data)
 }
 
 /**
@@ -78,28 +65,77 @@ export async function deductCredit(userId: string): Promise<number> {
 export async function addCredits(userId: string, amount: number): Promise<number> {
   const supabase = createAdminClient()
 
-  const { data: profile, error: fetchError } = await supabase
-    .from('profiles')
-    .select('credit_balance')
-    .eq('id', userId)
-    .single()
+  const { data, error } = await supabase.rpc('add_credits', {
+    p_user_id: userId,
+    p_amount: amount,
+  })
 
-  if (fetchError || !profile) {
-    throw new Error(`User not found: ${fetchError?.message ?? 'Unknown'}`)
+  if (error) {
+    throw new Error(`Failed to add credits: ${error.message}`)
   }
 
-  const newBalance = profile.credit_balance + amount
+  return Number(data)
+}
 
-  const { error: updateError } = await supabase
-    .from('profiles')
-    .update({ credit_balance: newBalance })
-    .eq('id', userId)
+/**
+ * Grant credits and mark a purchase completed in one database transaction.
+ * Returns the user's new balance.
+ */
+export async function completePurchase(purchaseId: string): Promise<number> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase.rpc('complete_purchase', {
+    p_purchase_id: purchaseId,
+  })
 
-  if (updateError) {
-    throw new Error(`Failed to add credits: ${updateError.message}`)
+  if (error) {
+    throw new Error(`Failed to complete purchase: ${error.message}`)
   }
 
-  return newBalance
+  return Number(data)
+}
+
+export async function startPackGenerationCharge(input: {
+  generationId: string
+  sessionId: string | null
+  userId: string
+  packCount: number
+}): Promise<Generation> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase.rpc('start_pack_generation', {
+    p_generation_id: input.generationId,
+    p_session_id: input.sessionId,
+    p_user_id: input.userId,
+    p_pack_count: input.packCount,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data) {
+    throw new Error('Failed to start pack generation')
+  }
+
+  return data as Generation
+}
+
+export async function refundPackGenerationCharge(
+  generationId: string,
+  amount: number
+): Promise<number> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase.rpc('refund_pack_generation', {
+    p_generation_id: generationId,
+    p_amount: amount,
+  })
+
+  if (error) {
+    throw new Error(`Failed to refund pack generation: ${error.message}`)
+  }
+
+  return Number(data ?? 0)
 }
 
 /**

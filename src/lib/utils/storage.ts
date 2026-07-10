@@ -16,3 +16,23 @@ export function getPublicUrl(
   const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl
 }
+
+/**
+ * Create a temporary signed URL for a private storage path.
+ */
+export async function getSignedUrl(
+  supabase: Pick<SupabaseClient, 'storage'>,
+  bucket: string,
+  path: string,
+  expiresInSeconds: number
+): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, expiresInSeconds)
+
+  if (error || !data) {
+    throw new Error(`Failed to create signed URL: ${error?.message ?? 'Unknown error'}`)
+  }
+
+  return data.signedUrl
+}

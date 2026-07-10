@@ -62,6 +62,7 @@ export function StickerPackCard({
               emotion={sticker.emotion}
               textContent={sticker.textContent}
               onClick={() => onStickerClick(sticker, index)}
+              priority={index < 3}
             />
           ))}
         </div>

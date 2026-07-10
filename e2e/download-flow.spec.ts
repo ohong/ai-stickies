@@ -1,34 +1,44 @@
 import { test, expect, Page } from '@playwright/test'
 
 const MOCK_GENERATION_ID = 'test-gen-id-results'
+const mockStickerImages = [
+  '/stickers/chibi/01.png',
+  '/stickers/chibi/03.png',
+  '/stickers/chibi/05.png',
+  '/stickers/chibi/07.png',
+]
 
 const mockStickers = (packIndex: number) =>
   Array.from({ length: 8 }, (_, i) => ({
     id: `sticker-${packIndex}-${i + 1}`,
     sequenceNumber: i + 1,
-    imageUrl: `https://example.com/stickers/pack${packIndex}/sticker${i + 1}.png`,
+    imageUrl: mockStickerImages[i % mockStickerImages.length],
     emotion: ['Happy', 'Sad', 'Excited', 'Angry', 'Love', 'Sleepy', 'Cool', 'Surprised'][i],
     hasText: i % 3 === 0,
     textContent: i % 3 === 0 ? `Text ${i + 1}` : null,
   }))
 
 const mockResultsData = {
+  status: 'completed',
   packs: [
     {
       id: 'pack-1',
       styleName: 'Chibi',
+      stickersCompleted: 8,
       stickers: mockStickers(1),
-      zipUrl: 'https://example.com/packs/chibi.zip',
+      zipUrl: 'https://test.supabase.co/storage/v1/object/public/stickers/packs/chibi.zip',
     },
     {
       id: 'pack-2',
       styleName: 'Minimalist',
+      stickersCompleted: 8,
       stickers: mockStickers(2),
-      zipUrl: 'https://example.com/packs/minimalist.zip',
+      zipUrl: 'https://test.supabase.co/storage/v1/object/public/stickers/packs/minimalist.zip',
     },
   ],
   remainingGenerations: 7,
   errors: [],
+  totalStickersPerPack: 10,
 }
 
 async function mockSessionApi(page: Page) {
@@ -179,10 +189,59 @@ test.describe('Download Flow - Results Page', () => {
     await expect(downloadPackBtns).toHaveCount(2)
   })
 
+  test('download pack action starts a ZIP download', async ({ page }) => {
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: /download pack/i }).first().click()
+
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toBe('chibi-stickers.zip')
+  })
+
   test('download all button exists', async ({ page }) => {
     const downloadAllBtn = page.getByRole('button', { name: /download all/i })
     await expect(downloadAllBtn).toBeVisible()
     await expect(downloadAllBtn).toBeEnabled()
+  })
+
+  test('publishing a pack reveals copy and social share links', async ({ page }) => {
+    await page.evaluate(() => {
+      ;(window as unknown as { __copiedText?: string }).__copiedText = undefined
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            ;(window as unknown as { __copiedText?: string }).__copiedText = text
+          },
+        },
+      })
+    })
+
+    let publishCalls = 0
+    await page.route('**/api/packs/pack-1/share', (route) => {
+      publishCalls += 1
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          slug: 'shared-chibi',
+          shareUrl: 'http://localhost:3000/packs/shared-chibi',
+        }),
+      })
+    })
+
+    await page.getByRole('button', { name: /^share$/i }).first().click()
+
+    await expect(page.getByRole('button', { name: /copy link/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'X' })).toHaveAttribute('href', /shared-chibi/)
+    await expect(page.getByRole('link', { name: 'LINE' })).toHaveAttribute('href', /shared-chibi/)
+    await expect(page.getByRole('link', { name: 'WhatsApp' })).toHaveAttribute('href', /shared-chibi/)
+    expect(publishCalls).toBe(1)
+
+    await page.getByRole('button', { name: /copy link/i }).click()
+    await expect(page.getByRole('button', { name: /copied/i })).toBeVisible()
+    await expect.poll(() =>
+      page.evaluate(() => (window as unknown as { __copiedText?: string }).__copiedText)
+    ).toContain('/packs/shared-chibi')
   })
 
   test('confetti animation container appears on results page', async ({ page }) => {
@@ -190,7 +249,6 @@ test.describe('Download Flow - Results Page', () => {
     // It may disappear after 4 seconds, so check quickly
     // The component renders if prefers-reduced-motion is not set
     // In the test browser, motion is not reduced by default
-    const confettiContainer = page.locator('.fixed.pointer-events-none.overflow-hidden')
     // It may or may not be visible depending on timing, but the page loads successfully
     // The key assertion is that the results page loaded without errors
     await expect(page.getByText(/your sticker packs are ready/i)).toBeVisible()
@@ -222,6 +280,32 @@ test.describe('Download Flow - Error State', () => {
     // Back button should be available
     const backBtn = page.getByRole('button', { name: /back to create/i })
     await expect(backBtn).toBeVisible()
+  })
+
+  test('failed generation explains refund and links back to retry styles', async ({ page }) => {
+    await mockSessionApi(page)
+
+    await page.route(`**/api/generations/${MOCK_GENERATION_ID}/results`, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'failed',
+          packs: [],
+          remainingGenerations: 7,
+          errors: ['Pack generation failed'],
+          totalStickersPerPack: 10,
+        }),
+      })
+    })
+
+    await page.goto(`/create/results?generationId=${MOCK_GENERATION_ID}`)
+
+    await expect(page.getByRole('heading', { name: /sticker pack generation failed/i })).toBeVisible()
+    await expect(page.getByText(/no credits were kept/i)).toBeVisible()
+
+    await page.getByRole('button', { name: /try again/i }).click()
+    await expect(page).toHaveURL(`/create/styles?generationId=${MOCK_GENERATION_ID}`)
   })
 })
 

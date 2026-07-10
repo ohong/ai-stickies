@@ -62,8 +62,16 @@ function createMockSupabaseClient() {
   // Storage mock
   const storageBucket = {
     createSignedUploadUrl: vi.fn(),
+    createSignedUrl: vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed-preview.png?token=read-token' },
+      error: null,
+    }),
     upload: vi.fn(),
     list: vi.fn(),
+    download: vi.fn().mockResolvedValue({
+      data: new Blob(['fake-image'], { type: 'image/png' }),
+      error: null,
+    }),
     remove: vi.fn(),
     getPublicUrl: vi.fn().mockReturnValue({
       data: { publicUrl: 'https://example.com/public/test.png' },
@@ -455,7 +463,8 @@ describe('completeUpload', () => {
     expect(result.uploadId).toBe('upload-id-1')
     expect(result.sessionId).toBe(TEST_SESSION_ID)
     expect(result.remainingGenerations).toBe(8)
-    expect(result.previewUrl).toBe('https://example.com/public/test.png')
+    expect(result.previewUrl).toBe('https://example.com/signed-preview.png?token=read-token')
+    expect(storageBucket.createSignedUrl).toHaveBeenCalledWith(existingUpload.storage_path, 60 * 60)
     // Should NOT have tried to insert a new upload record
     expect(chainable.insert).not.toHaveBeenCalled()
   })
@@ -492,7 +501,8 @@ describe('completeUpload', () => {
     expect(result.uploadId).toBe('new-upload-id')
     expect(result.sessionId).toBe(TEST_SESSION_ID)
     expect(result.remainingGenerations).toBe(9)
-    expect(result.previewUrl).toBe('https://example.com/public/test.png')
+    expect(result.previewUrl).toBe('https://example.com/signed-preview.png?token=read-token')
+    expect(storageBucket.createSignedUrl).toHaveBeenCalledWith(newUpload.storage_path, 60 * 60)
     // Verify insert was called
     expect(chainable.insert).toHaveBeenCalled()
     // Verify file existence was checked

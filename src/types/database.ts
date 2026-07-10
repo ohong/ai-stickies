@@ -1,7 +1,7 @@
 export type Language = 'en' | 'ja' | 'zh-TW' | 'zh-CN' | 'th' | 'id' | 'ko'
 export type FidelityLevel = 'high' | 'stylized' | 'abstract' | 'chibi' | 'minimalist'
 export type GenerationStatus = 'pending' | 'processing' | 'completed' | 'failed'
-export type Provider = 'fal' | 'flux'
+export type Provider = string
 
 export interface Session {
   id: string
@@ -34,12 +34,17 @@ export interface Generation {
   provider: Provider | null
   created_at: string
   completed_at: string | null
+  pack_generation_started_at: string | null
+  pack_credit_cost: number
+  pack_credits_refunded: number
 }
 
 export interface Profile {
   id: string
   display_name: string | null
   avatar_url: string | null
+  credit_balance: number
+  stripe_customer_id: string | null
   created_at: string
 }
 
@@ -76,15 +81,6 @@ export interface Sticker {
   has_text: boolean
   text_content: string | null
   prompt_used: string | null
-  created_at: string
-}
-
-export interface Profile {
-  id: string
-  display_name: string | null
-  avatar_url: string | null
-  credit_balance: number
-  stripe_customer_id: string | null
   created_at: string
 }
 
@@ -128,6 +124,8 @@ export interface Database {
         Row: Profile
         Insert: Omit<Profile, 'created_at'> & {
           created_at?: string
+          credit_balance?: number
+          stripe_customer_id?: string | null
         }
         Update: Partial<Profile>
       }
@@ -141,11 +139,14 @@ export interface Database {
       }
       generations: {
         Row: Generation
-        Insert: Omit<Generation, 'id' | 'created_at' | 'completed_at' | 'user_id'> & {
+        Insert: Omit<Generation, 'id' | 'created_at' | 'completed_at' | 'user_id' | 'pack_generation_started_at' | 'pack_credit_cost' | 'pack_credits_refunded'> & {
           id?: string
           created_at?: string
           completed_at?: string | null
           user_id?: string | null
+          pack_generation_started_at?: string | null
+          pack_credit_cost?: number
+          pack_credits_refunded?: number
         }
         Update: Partial<Generation>
       }
@@ -175,15 +176,6 @@ export interface Database {
           created_at?: string
         }
         Update: Partial<Sticker>
-      }
-      profiles: {
-        Row: Profile
-        Insert: Omit<Profile, 'created_at'> & {
-          created_at?: string
-          credit_balance?: number
-          stripe_customer_id?: string | null
-        }
-        Update: Partial<Profile>
       }
       credit_packs: {
         Row: CreditPack

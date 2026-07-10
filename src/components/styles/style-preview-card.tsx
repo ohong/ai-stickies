@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Check } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/src/lib/utils/cn'
@@ -64,11 +65,13 @@ export function StylePreviewCard({
             <div className="size-12 rounded-full border-2 border-border border-t-primary animate-spin" />
           </div>
         ) : previewUrl ? (
-          <img
+          <Image
             src={previewUrl}
             alt={`${styleName} preview`}
             width={300}
             height={300}
+            unoptimized
+            sizes="(max-width: 640px) 45vw, (max-width: 1280px) 30vw, 220px"
             className="w-full h-full object-cover"
             loading="lazy"
           />

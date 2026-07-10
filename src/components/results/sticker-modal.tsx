@@ -1,9 +1,11 @@
 'use client'
 
+import Image from 'next/image'
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -67,6 +69,9 @@ export function StickerModal({
           <DialogTitle className="text-center text-balance">
             {sticker.emotion || `Sticker ${sticker.sequenceNumber}`}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Preview sticker {sticker.sequenceNumber} of {stickers.length}. Use the previous and next buttons to browse the pack.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="relative">
@@ -105,9 +110,13 @@ export function StickerModal({
           </button>
 
           <div className="aspect-square max-h-[50dvh] sm:max-h-[60vh] mx-auto p-4">
-            <img
+            <Image
               src={sticker.imageUrl}
               alt={sticker.emotion || 'Sticker'}
+              width={370}
+              height={320}
+              sizes="(max-width: 640px) 85vw, 520px"
+              loading="eager"
               className="w-full h-full object-contain rounded-xl"
             />
           </div>
@@ -119,7 +128,7 @@ export function StickerModal({
             {sticker.textContent && (
               <>
                 <span className="size-1 rounded-full bg-border" />
-                <span className="italic truncate max-w-[200px]">"{sticker.textContent}"</span>
+                <span className="italic truncate max-w-[200px]">&quot;{sticker.textContent}&quot;</span>
               </>
             )}
           </div>

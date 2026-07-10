@@ -4,7 +4,7 @@
  */
 
 import { generatePreviewPrompt as fireworksPreviewPrompt, generateStickerPromptsWithRetry } from '../ai/fireworks'
-import { EMOTIONS, getEmotionById } from '../../constants/emotions'
+import { getEmotionById } from '../../constants/emotions'
 import { getStyleConfig, buildStylePrompt } from '../../constants/styles'
 import {
   STICKER_BASE_REQUIREMENTS,

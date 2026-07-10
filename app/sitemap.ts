@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getAppUrl } from "@/src/lib/config";
 
-const BASE_URL = "https://aistickies.com";
+const BASE_URL = getAppUrl();
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

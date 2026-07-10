@@ -1,5 +1,7 @@
 # AI Stickies - Developer Handoff Document
 
+> Historical (Jan 2026): superseded by `docs/audit-2026-06-09.md`.
+
 **For:** Fahmi
 **From:** Oscar
 **Date:** January 24, 2026

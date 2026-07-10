@@ -57,7 +57,7 @@ async function main() {
           console.log(`⏭️  Skipped: ${firstLine}...`)
         } else {
           // Try direct query as fallback
-          const { error: queryError } = await supabase.from('_migration_test').select()
+          await supabase.from('_migration_test').select()
 
           // If it's just a missing function, continue
           if (error.message.includes('function') && error.message.includes('does not exist')) {
@@ -84,7 +84,7 @@ async function main() {
         const firstLine = statement.split('\n')[0].substring(0, 60)
         console.log(`✅ ${firstLine}...`)
       }
-    } catch (err) {
+    } catch {
       console.error(`❌ Failed to execute statement`)
     }
   }

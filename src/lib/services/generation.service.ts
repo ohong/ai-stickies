@@ -9,6 +9,7 @@ import { generateSimplePreviewPrompt } from '@/src/lib/services/prompt.service'
 import { processForLine } from '@/src/lib/services/image-processing.service'
 import { STYLE_ORDER, getStyleConfig } from '@/src/constants/styles'
 import { storageConfig, generationConfig } from '@/src/lib/config'
+import { getSignedUrl } from '@/src/lib/utils/storage'
 import type { FidelityLevel, Language, Provider, StylePreview } from '@/src/types/database'
 
 export interface GeneratePreviewsInput {
@@ -170,7 +171,7 @@ async function generateSinglePreview(
     prompt,
     referenceImage: input.referenceImageBase64,
     referenceImageMimeType: input.mimeType,
-    provider: input.provider as 'flux' | 'fal' | undefined,
+    provider: input.provider,
     width: generationConfig.imageWidth,
     height: generationConfig.imageHeight,
   })
@@ -212,17 +213,12 @@ async function generateSinglePreview(
     throw new Error(`Failed to save preview record: ${dbError?.message}`)
   }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from(storageConfig.stickerBucket)
-    .getPublicUrl(storagePath)
-
   return {
     id: preview.id,
     styleName: styleConfig.name,
     fidelityLevel: input.fidelityLevel,
     description: styleConfig.description,
-    previewUrl: urlData.publicUrl,
+    previewUrl: await getSignedUrl(supabase, storageConfig.stickerBucket, storagePath, 60 * 60),
   }
 }
 
@@ -243,19 +239,20 @@ export async function getGenerationPreviews(
     throw new Error(`Failed to fetch previews: ${error.message}`)
   }
 
-  return (previews ?? []).map((preview: StylePreview) => {
-    const { data: urlData } = supabase.storage
-      .from(storageConfig.stickerBucket)
-      .getPublicUrl(preview.preview_storage_path)
-
+  return Promise.all((previews ?? []).map(async (preview: StylePreview) => {
     return {
       id: preview.id,
       styleName: preview.style_name,
       fidelityLevel: preview.fidelity_level,
       description: preview.description ?? '',
-      previewUrl: urlData.publicUrl,
+      previewUrl: await getSignedUrl(
+        supabase,
+        storageConfig.stickerBucket,
+        preview.preview_storage_path,
+        60 * 60
+      ),
     }
-  })
+  }))
 }
 
 /**

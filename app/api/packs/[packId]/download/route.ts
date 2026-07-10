@@ -7,10 +7,13 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/src/lib/supabase/admin'
-import { getSessionIdFromCookie } from '@/src/lib/services/session.service'
 import { storageConfig } from '@/src/lib/config'
 import { createPackZip } from '@/src/lib/utils/zip'
 import { createMainImageComposite, createTabImage } from '@/src/lib/services/image-processing.service'
+import {
+  AuthorizationError,
+  requirePackAccess,
+} from '@/src/lib/services/authorization.service'
 import type { Sticker, StickerPack, Generation } from '@/src/types/database'
 
 interface PackWithRelations extends StickerPack {
@@ -25,37 +28,18 @@ export async function GET(
   try {
     const { packId } = await params
 
-    // Verify session
-    const sessionId = await getSessionIdFromCookie()
-    if (!sessionId) {
-      return NextResponse.json({ error: 'No session found' }, { status: 401 })
-    }
-
     const supabase = createAdminClient()
 
-    // Fetch pack with stickers and generation (for ownership check)
-    const { data: pack, error: packError } = await supabase
-      .from('sticker_packs')
-      .select(`
+    const { pack } = await requirePackAccess<PackWithRelations>(
+      packId,
+      `
         *,
         stickers (*),
         generations!inner (*)
-      `)
-      .eq('id', packId)
-      .single()
+      `
+    )
 
-    if (packError || !pack) {
-      return NextResponse.json({ error: 'Pack not found' }, { status: 404 })
-    }
-
-    const packData = pack as unknown as PackWithRelations
-
-    // Verify ownership through generation -> session
-    if (packData.generations.session_id !== sessionId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
-
-    const stickers = packData.stickers
+    const stickers = pack.stickers
     if (!stickers || stickers.length === 0) {
       return NextResponse.json({ error: 'No stickers in pack' }, { status: 400 })
     }
@@ -107,11 +91,11 @@ export async function GET(
       stickers: stickerData,
       mainImage,
       tabImage,
-      packName: packData.style_name,
+      packName: pack.style_name,
     })
 
     // Return ZIP as download
-    const sanitizedName = packData.style_name.replace(/[^a-zA-Z0-9-_]/g, '_')
+    const sanitizedName = pack.style_name.replace(/[^a-zA-Z0-9-_]/g, '_')
 
     return new NextResponse(new Uint8Array(zipBuffer), {
       status: 200,
@@ -124,6 +108,10 @@ export async function GET(
     })
   } catch (error) {
     console.error('Pack download error:', error)
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Download failed' },
       { status: 500 }

@@ -83,7 +83,7 @@ export interface ImageGenerationRequest {
 
 export interface ImageGenerationResponse {
   imageUrl: string
-  provider: 'fal' | 'flux'
+  provider: string
 }
 
 // Polling types
@@ -99,7 +99,7 @@ export interface GeneratePreviewsRequest {
   styleDescription?: string
   personalContext?: string
   language: Language
-  provider?: 'fal' | 'flux'
+  provider?: string
 }
 
 export interface GeneratedPreview {

@@ -1,7 +1,5 @@
 # AI Stickies
 
-![AI Stickies Demo](demo.gif)
-
 **Turn any selfie into personalized messaging stickers in seconds.**
 
 AI Stickies lets anyone create custom sticker packs using generative AI—no artistic skills required. Upload a photo, pick a style, and get a complete sticker pack ready for LINE (and soon, other platforms).
@@ -26,12 +24,15 @@ Each platform has unique sticker formats and cultural preferences—but the core
 
 ## Tech Stack
 
-- **Frontend:** Next.js 15, TypeScript, Tailwind CSS
-- **Backend:** Supabase (PostgreSQL + Storage)
-- **Image Generation:** Gemini Nano Banana, FLUX.2
-- **Prompt Optimization:** Fireworks AI (cost-effective LLM inference)
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- **Backend:** Supabase (PostgreSQL + private upload and sticker storage served through signed URLs)
+- **Image Generation:** Registry-driven routing via `src/lib/ai/registry.ts`; set `IMAGE_MODEL` to `nano-banana-2`, `nano-banana-pro`, `flux-2-pro`, or `gpt-image`
+- **Prompt Optimization:** Fireworks AI
+- **Payments:** Stripe Checkout with transactional credit grants
+- **Package Manager:** Bun
+- **Testing:** Vitest unit tests and Playwright E2E tests
 - **Deployment:** Vercel
 
 ## Status
 
-MVP in development. See docs/specs.md for full product specifications.
+MVP in development. See `docs/specs.md` for product specifications and `docs/audit-2026-07-06.md` for the latest implementation audit.

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createAdminClient } from '@/src/lib/supabase/admin'
 
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before the route handler import
@@ -6,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/src/lib/services/session.service', () => ({
   getOrCreateSession: vi.fn(),
-  getSessionHistory: vi.fn(),
+  getSessionHistoryForActor: vi.fn(),
   getStylePreviewCount: vi.fn(),
 }))
 
@@ -17,7 +18,7 @@ vi.mock('@/src/lib/services/session.service', () => ({
 import { GET } from '@/app/api/session/route'
 import {
   getOrCreateSession,
-  getSessionHistory,
+  getSessionHistoryForActor,
   getStylePreviewCount,
 } from '@/src/lib/services/session.service'
 
@@ -48,6 +49,9 @@ function makeGeneration(overrides: Record<string, unknown> = {}) {
     provider: 'fal',
     created_at: '2026-01-01T10:00:00Z',
     completed_at: '2026-01-01T10:05:00Z',
+    pack_generation_started_at: null,
+    pack_credit_cost: 0,
+    pack_credits_refunded: 0,
     ...overrides,
   }
 }
@@ -59,6 +63,9 @@ function makeGeneration(overrides: Record<string, unknown> = {}) {
 describe('GET /api/session', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(createAdminClient).mockReturnValue(
+      createSessionAdminMock(null) as unknown as ReturnType<typeof createAdminClient>
+    )
   })
 
   // -----------------------------------------------------------------------
@@ -68,7 +75,7 @@ describe('GET /api/session', () => {
   it('returns session data with success: true', async () => {
     const session = makeSession()
     vi.mocked(getOrCreateSession).mockResolvedValue(session as any)
-    vi.mocked(getSessionHistory).mockResolvedValue([])
+    vi.mocked(getSessionHistoryForActor).mockResolvedValue([])
 
     const response = await GET()
     const json = await response.json()
@@ -81,6 +88,7 @@ describe('GET /api/session', () => {
       remainingGenerations: 7,
       maxGenerations: 10,
       history: [],
+      latestUpload: null,
     })
   })
 
@@ -98,7 +106,7 @@ describe('GET /api/session', () => {
     })
 
     vi.mocked(getOrCreateSession).mockResolvedValue(session as any)
-    vi.mocked(getSessionHistory).mockResolvedValue([completedGen, pendingGen] as any)
+    vi.mocked(getSessionHistoryForActor).mockResolvedValue([completedGen, pendingGen] as any)
     vi.mocked(getStylePreviewCount).mockResolvedValue(3)
 
     const response = await GET()
@@ -135,7 +143,7 @@ describe('GET /api/session', () => {
   it('calculates remaining generations correctly', async () => {
     const session = makeSession({ generation_count: 7, max_generations: 10 })
     vi.mocked(getOrCreateSession).mockResolvedValue(session as any)
-    vi.mocked(getSessionHistory).mockResolvedValue([])
+    vi.mocked(getSessionHistoryForActor).mockResolvedValue([])
 
     const response = await GET()
     const json = await response.json()
@@ -151,13 +159,38 @@ describe('GET /api/session', () => {
   it('returns full remaining count for a new session', async () => {
     const session = makeSession({ generation_count: 0 })
     vi.mocked(getOrCreateSession).mockResolvedValue(session as any)
-    vi.mocked(getSessionHistory).mockResolvedValue([])
+    vi.mocked(getSessionHistoryForActor).mockResolvedValue([])
 
     const response = await GET()
     const json = await response.json()
 
     expect(json.data.generationCount).toBe(0)
     expect(json.data.remainingGenerations).toBe(10)
+  })
+
+  it('includes latest upload with a signed preview URL', async () => {
+    const session = makeSession()
+    vi.mocked(getOrCreateSession).mockResolvedValue(session as any)
+    vi.mocked(getSessionHistoryForActor).mockResolvedValue([])
+    vi.mocked(createAdminClient).mockReturnValue(
+      createSessionAdminMock({
+        id: 'upload-1',
+        storage_path: 'session-test-001/photo.png',
+        original_filename: 'photo.png',
+        size_bytes: 2048,
+      }) as unknown as ReturnType<typeof createAdminClient>
+    )
+
+    const response = await GET()
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.data.latestUpload).toEqual({
+      uploadId: 'upload-1',
+      previewUrl: 'https://example.com/signed-photo.png?token=read',
+      filename: 'photo.png',
+      sizeBytes: 2048,
+    })
   })
 
   // -----------------------------------------------------------------------
@@ -199,7 +232,7 @@ describe('GET /api/session', () => {
   it('returns 500 when getSessionHistory fails', async () => {
     const session = makeSession()
     vi.mocked(getOrCreateSession).mockResolvedValue(session as any)
-    vi.mocked(getSessionHistory).mockRejectedValue(new Error('History query failed'))
+    vi.mocked(getSessionHistoryForActor).mockRejectedValue(new Error('History query failed'))
 
     const response = await GET()
     const json = await response.json()
@@ -220,7 +253,7 @@ describe('GET /api/session', () => {
     const gen3 = makeGeneration({ id: 'gen-3', status: 'failed' })
 
     vi.mocked(getOrCreateSession).mockResolvedValue(session as any)
-    vi.mocked(getSessionHistory).mockResolvedValue([gen1, gen2, gen3] as any)
+    vi.mocked(getSessionHistoryForActor).mockResolvedValue([gen1, gen2, gen3] as any)
     vi.mocked(getStylePreviewCount)
       .mockResolvedValueOnce(5) // gen-1
       .mockResolvedValueOnce(2) // gen-2
@@ -236,3 +269,27 @@ describe('GET /api/session', () => {
     expect(getStylePreviewCount).toHaveBeenCalledTimes(2)
   })
 })
+
+function createSessionAdminMock(latestUpload: Record<string, unknown> | null) {
+  const uploadBuilder = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: latestUpload, error: null }),
+  }
+
+  const storageBucket = {
+    createSignedUrl: vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://example.com/signed-photo.png?token=read' },
+      error: null,
+    }),
+  }
+
+  return {
+    from: vi.fn(() => uploadBuilder),
+    storage: {
+      from: vi.fn(() => storageBucket),
+    },
+  }
+}

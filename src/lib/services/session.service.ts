@@ -11,10 +11,16 @@ interface RateLimitResult {
   total: number
 }
 
+interface QuotaMutationResult {
+  generationCount: number
+  remaining: number
+  total: number
+}
+
 /**
  * Get existing session by ID or return null
  */
-async function getSession(sessionId: string): Promise<Session | null> {
+export async function getSession(sessionId: string): Promise<Session | null> {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('sessions')
@@ -51,7 +57,7 @@ async function createSession(userId?: string): Promise<Session> {
 /**
  * Set session cookie
  */
-async function setSessionCookie(sessionId: string): Promise<void> {
+export async function setSessionCookie(sessionId: string): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
@@ -83,6 +89,7 @@ export async function getOrCreateSession(): Promise<Session> {
     const session = await getSessionByUserId(user.id)
     if (session) {
       await touchSession(session.id)
+      await setSessionCookie(session.id)
       return session
     }
     // Authenticated user with no session — create one linked to their account
@@ -114,7 +121,7 @@ export async function getOrCreateSession(): Promise<Session> {
 /**
  * Get session by user_id
  */
-async function getSessionByUserId(userId: string): Promise<Session | null> {
+export async function getSessionByUserId(userId: string): Promise<Session | null> {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('sessions')
@@ -126,6 +133,18 @@ async function getSessionByUserId(userId: string): Promise<Session | null> {
 
   if (error || !data) return null
   return data
+}
+
+function mapQuotaMutationRow(row: {
+  generation_count: number
+  max_generations: number
+  remaining: number
+}): QuotaMutationResult {
+  return {
+    generationCount: row.generation_count,
+    remaining: row.remaining,
+    total: row.max_generations,
+  }
 }
 
 /**
@@ -152,33 +171,67 @@ export async function checkRateLimit(sessionId: string): Promise<RateLimitResult
 }
 
 /**
- * Increment generation count for session
- * Returns new count
+ * Atomically reserve generation quota for a session.
+ * Throws when the quota would be exceeded.
  */
-export async function incrementGenerationCount(sessionId: string): Promise<number> {
+export async function reserveGenerationCount(
+  sessionId: string,
+  amount = 1
+): Promise<QuotaMutationResult> {
   const supabase = createAdminClient()
 
-  // Get current count
-  const session = await getSession(sessionId)
-  if (!session) {
-    throw new Error('Session not found')
-  }
-
-  const newCount = session.generation_count + 1
-
-  const { error } = await supabase
-    .from('sessions')
-    .update({
-      generation_count: newCount,
-      last_active_at: new Date().toISOString(),
-    })
-    .eq('id', sessionId)
+  const { data, error } = await supabase.rpc('reserve_session_generations', {
+    p_session_id: sessionId,
+    p_amount: amount,
+  })
 
   if (error) {
-    throw new Error(`Failed to increment generation count: ${error.message}`)
+    if (error.message.includes('RATE_LIMIT_EXCEEDED')) {
+      throw new Error('No generations remaining')
+    }
+    throw new Error(`Failed to reserve generation quota: ${error.message}`)
   }
 
-  return newCount
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) {
+    throw new Error('Failed to reserve generation quota')
+  }
+
+  return mapQuotaMutationRow(row)
+}
+
+/**
+ * Atomically refund generation quota for a session.
+ */
+export async function refundGenerationCount(
+  sessionId: string,
+  amount = 1
+): Promise<QuotaMutationResult> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase.rpc('refund_session_generations', {
+    p_session_id: sessionId,
+    p_amount: amount,
+  })
+
+  if (error) {
+    throw new Error(`Failed to refund generation quota: ${error.message}`)
+  }
+
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) {
+    throw new Error('Failed to refund generation quota')
+  }
+
+  return mapQuotaMutationRow(row)
+}
+
+/**
+ * Backwards-compatible single-generation reservation.
+ */
+export async function incrementGenerationCount(sessionId: string): Promise<number> {
+  const result = await reserveGenerationCount(sessionId, 1)
+  return result.generationCount
 }
 
 /**
@@ -192,6 +245,34 @@ export async function getSessionHistory(sessionId: string): Promise<Generation[]
     .select('*')
     .eq('session_id', sessionId)
     .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Failed to fetch session history: ${error.message}`)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Get all generations visible to a request actor.
+ */
+export async function getSessionHistoryForActor(
+  sessionId: string,
+  userId?: string | null
+): Promise<Generation[]> {
+  const supabase = createAdminClient()
+  let query = supabase
+    .from('generations')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (userId) {
+    query = query.or(`session_id.eq.${sessionId},user_id.eq.${userId}`)
+  } else {
+    query = query.eq('session_id', sessionId)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     throw new Error(`Failed to fetch session history: ${error.message}`)

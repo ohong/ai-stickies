@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { after } from 'next/server'
 import { getPackBySlug, incrementViewCount } from '@/src/lib/services/share.service'
 import { getShareUrl } from '@/src/lib/utils/share'
 import { PublicPackView } from './public-pack-view'
@@ -46,8 +47,9 @@ export default async function PublicPackPage({ params }: PageProps) {
     notFound()
   }
 
-  // Fire-and-forget view count increment
-  incrementViewCount(pack.id)
+  after(async () => {
+    await incrementViewCount(pack.id)
+  })
 
   return (
     <div className="min-h-dvh bg-background">

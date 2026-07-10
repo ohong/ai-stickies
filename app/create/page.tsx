@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight, ArrowLeft, AlertCircle, X } from 'lucide-react'
@@ -15,14 +15,35 @@ import { GenerationProgress } from '@/src/components/styles/generation-progress'
 import { useUpload } from '@/src/hooks/use-upload'
 import { useSession } from '@/src/hooks/use-session'
 import { useGeneration } from '@/src/hooks/use-generation'
-import { DEFAULT_LANGUAGE } from '@/src/constants/languages'
+import { DEFAULT_LANGUAGE, LANGUAGES } from '@/src/constants/languages'
 import type { Language } from '@/src/types'
 
 export default function CreatePage() {
   const router = useRouter()
   const [styleDescription, setStyleDescription] = useState('')
   const [personalContext, setPersonalContext] = useState('')
-  const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE)
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof navigator === 'undefined') return DEFAULT_LANGUAGE
+    return detectLanguage(navigator.language)
+  })
+
+  const {
+    maxGenerations,
+    isLoading: sessionLoading,
+    error: sessionError,
+    canGenerate,
+    decrementGenerations,
+    latestUpload,
+  } = useSession()
+
+  const initialImage = useMemo(() => latestUpload
+    ? {
+        id: latestUpload.uploadId,
+        url: latestUpload.previewUrl,
+        filename: latestUpload.filename,
+        size: latestUpload.sizeBytes,
+      }
+    : null, [latestUpload])
 
   const {
     uploadedImage,
@@ -32,16 +53,7 @@ export default function CreatePage() {
     uploadFile,
     clearUpload,
     clearError,
-  } = useUpload()
-
-  const {
-    remainingGenerations,
-    maxGenerations,
-    isLoading: sessionLoading,
-    error: sessionError,
-    canGenerate,
-    decrementGenerations,
-  } = useSession()
+  } = useUpload(initialImage)
 
   const {
     isGenerating,
@@ -69,8 +81,6 @@ export default function CreatePage() {
 
   const isGenerateDisabled =
     !uploadedImage || isUploading || sessionLoading || !canGenerate || isGenerating
-
-  const displayError = uploadError || generationError || sessionError
 
   const handleClearError = () => {
     clearError()
@@ -118,7 +128,7 @@ export default function CreatePage() {
             Create Your Sticker Pack
           </h1>
           <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground text-pretty">
-            Upload a photo, then customize your style
+            Upload a photo and get five sticker styles to choose from.
           </p>
         </div>
 
@@ -174,12 +184,18 @@ export default function CreatePage() {
 
           {/* Section 2: Customization — only show after upload */}
           {uploadedImage && (
-            <section className="space-y-5">
-              <h2 className="text-sm font-medium text-foreground">
-                Customize
-                <span className="text-muted-foreground font-normal ml-1">(optional)</span>
-              </h2>
-              <div className="bg-card rounded-2xl border border-border p-5 space-y-5">
+            <section>
+              <details className="group rounded-2xl border border-border bg-card">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                  <span>Add details <span className="font-normal text-muted-foreground">(optional)</span></span>
+                  <span className="text-xs text-muted-foreground group-open:hidden">
+                    {LANGUAGES[language].nativeLabel}
+                  </span>
+                  <span className="hidden text-xs text-muted-foreground group-open:inline">
+                    Hide
+                  </span>
+                </summary>
+                <div className="border-t border-border p-4 sm:p-5 space-y-5">
                 <StyleInput
                   value={styleDescription}
                   onChange={setStyleDescription}
@@ -195,15 +211,16 @@ export default function CreatePage() {
                   onChange={setLanguage}
                   disabled={isGenerating}
                 />
-              </div>
+                </div>
+              </details>
             </section>
           )}
 
           {/* Generation / session error shown near the action */}
-          {(generationError || sessionError) && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm flex items-start gap-2">
-              <AlertCircle className="size-4 mt-0.5 shrink-0" />
-              <span className="flex-1">{generationError || sessionError}</span>
+            {(generationError || sessionError) && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm flex items-start gap-2">
+                <AlertCircle className="size-4 mt-0.5 shrink-0" />
+              <span className="flex-1">{getFriendlyCreateError(generationError || sessionError)}</span>
               <button onClick={handleClearError} aria-label="Dismiss error">
                 <X className="size-4" />
               </button>
@@ -219,7 +236,7 @@ export default function CreatePage() {
                 disabled={isGenerateDisabled}
                 className="w-full sm:w-auto min-w-[280px] h-13 text-base font-semibold"
               >
-                Generate 5 Style Previews
+                Make my stickers
                 <ArrowRight className="size-5 ml-1" />
               </Button>
               <p className="mt-3 text-center text-xs text-muted-foreground">
@@ -231,4 +248,28 @@ export default function CreatePage() {
       </main>
     </div>
   )
+}
+
+function detectLanguage(locale: string): Language {
+  const normalizedLocale = locale.toLowerCase()
+
+  const exactMatch = Object.values(LANGUAGES).find(
+    (language) => language.locale.toLowerCase() === normalizedLocale
+  )
+  if (exactMatch) return exactMatch.code
+
+  const primarySubtag = normalizedLocale.split('-')[0]
+  const primaryMatch = Object.values(LANGUAGES).find(
+    (language) => language.locale.toLowerCase().split('-')[0] === primarySubtag
+  )
+
+  return primaryMatch?.code ?? DEFAULT_LANGUAGE
+}
+
+function getFriendlyCreateError(error: string | null): string {
+  if (!error) return ''
+  if (error.includes('fetch failed') || error.includes('Failed to create session')) {
+    return 'We could not reach the sticker setup service. Please try again in a moment.'
+  }
+  return error
 }

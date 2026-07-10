@@ -12,7 +12,17 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "my-video/**",
+    "trailer/**",
+    "hero-section-sticker/**",
+    "ai-stickies-demo/**",
   ]),
+  {
+    files: ["src/__tests__/**/*.ts", "src/__tests__/**/*.tsx", "e2e/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

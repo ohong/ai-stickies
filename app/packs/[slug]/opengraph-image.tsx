@@ -74,6 +74,7 @@ export default async function OGImage({
             <img
               key={i}
               src={sticker.imageUrl}
+              alt=""
               width={200}
               height={200}
               style={{

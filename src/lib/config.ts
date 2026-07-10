@@ -37,6 +37,17 @@ function optionalEnvNumber(name: string, defaultValue: number): number {
   return isNaN(parsed) ? defaultValue : parsed
 }
 
+export function getAppUrl(): string {
+  const fallback = process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : 'https://ai-stickies.app'
+  return optionalEnv('NEXT_PUBLIC_APP_URL', fallback).replace(/\/$/, '')
+}
+
+export const appConfig = {
+  url: getAppUrl(),
+}
+
 // Supabase configuration
 export const supabaseConfig = {
   url: requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
@@ -47,9 +58,9 @@ export const supabaseConfig = {
 // AI provider configuration
 export const aiConfig = {
   bflApiKey: process.env.BFL_API_KEY ?? '',
-  bflModel: process.env.BFL_MODEL ?? 'flux-2-pro', // FLUX.2: flux-2-pro
   falApiKey: process.env.FAL_API_KEY ?? '',
-  falModel: process.env.FAL_MODEL ?? 'fal-ai/nano-banana-2',
+  openaiApiKey: process.env.OPENAI_API_KEY ?? '',
+  imageModel: process.env.IMAGE_MODEL ?? '',
   fireworksApiKey: process.env.FIREWORKS_API_KEY ?? '',
 }
 
@@ -74,6 +85,7 @@ export const generationConfig = {
   maxRetries: 1 as const, // Retry failed stickers once
   pollIntervalMs: optionalEnvNumber('POLL_INTERVAL_MS', 2000),
   maxPollAttempts: optionalEnvNumber('MAX_POLL_ATTEMPTS', 60),
+  packUseReferenceImage: process.env.PACK_USE_REFERENCE_IMAGE !== 'false',
   imageWidth: 370,
   imageHeight: 320,
 }
@@ -94,17 +106,21 @@ export const featureFlags = {
 
 // Validate critical config at startup
 export function validateConfig(): void {
-  // These will throw if missing
-  supabaseConfig.url
-  supabaseConfig.anonKey
+  if (!supabaseConfig.url) {
+    throw new Error('Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL')
+  }
+  if (!supabaseConfig.anonKey) {
+    throw new Error('Missing required environment variable: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
+  }
 
   // Warn about missing AI keys
-  if (!aiConfig.bflApiKey && !aiConfig.falApiKey) {
+  if (!aiConfig.bflApiKey && !aiConfig.falApiKey && !aiConfig.openaiApiKey) {
     console.warn('Warning: No AI provider API keys configured')
   }
 }
 
 export const config = {
+  app: appConfig,
   supabase: supabaseConfig,
   ai: aiConfig,
   session: sessionConfig,

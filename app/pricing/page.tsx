@@ -10,8 +10,22 @@ export const metadata = {
   description: 'Buy credits to generate AI sticker packs.',
 }
 
-export default async function PricingPage() {
-  const packs = await getCreditPacks()
+export const dynamic = 'force-dynamic'
+
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string; canceled?: string }>
+}) {
+  const params = await searchParams
+  let packs: Awaited<ReturnType<typeof getCreditPacks>> = []
+  let packError: string | null = null
+
+  try {
+    packs = await getCreditPacks()
+  } catch {
+    packError = 'Credit packs are temporarily unavailable. Please try again soon.'
+  }
 
   // Try to get current user's balance (if logged in)
   let creditBalance: number | null = null
@@ -48,17 +62,37 @@ export default async function PricingPage() {
               Your balance: {creditBalance} credit{creditBalance !== 1 ? 's' : ''}
             </p>
           )}
+
+          {params.success === 'true' && (
+            <div className="mt-6 rounded-lg border border-primary/25 bg-primary/10 px-4 py-3 text-left text-sm text-foreground">
+              Payment received. Credits can take a few seconds to appear while Stripe confirms the purchase.
+            </div>
+          )}
+
+          {params.canceled === 'true' && (
+            <div className="mt-6 rounded-lg border border-border bg-muted/60 px-4 py-3 text-left text-sm text-muted-foreground">
+              Checkout was canceled. No credits were purchased.
+            </div>
+          )}
+
+          {packError && (
+            <div className="mt-6 rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-left text-sm text-destructive">
+              {packError}
+            </div>
+          )}
         </div>
 
-        <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-3">
-          {packs.map((pack, i) => (
-            <CreditPackCard
-              key={pack.id}
-              pack={pack}
-              highlighted={i === 1}
-            />
-          ))}
-        </div>
+        {packs.length > 0 && (
+          <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-3">
+            {packs.map((pack, i) => (
+              <CreditPackCard
+                key={pack.id}
+                pack={pack}
+                highlighted={i === 1}
+              />
+            ))}
+          </div>
+        )}
       </main>
       <Footer />
     </div>

@@ -12,8 +12,9 @@ import {
   createTabImage,
 } from './image-processing.service'
 import { createPackZip } from '../utils/zip'
-import { getPublicUrl } from '../utils/storage'
+import { getSignedUrl } from '../utils/storage'
 import { storageConfig, generationConfig } from '../config'
+import { refundPackGenerationCharge } from './credits.service'
 import type {
   Language,
   FidelityLevel,
@@ -33,6 +34,8 @@ export interface PackGenerationInput {
   language: Language
   personalContext?: string
   count?: number
+  referenceImageBase64?: string
+  referenceImageMimeType?: string
 }
 
 export interface PackGenerationProgress {
@@ -51,12 +54,24 @@ export interface PackGenerationResult {
   errors: string[]
 }
 
+export interface GenerationProgressSnapshot {
+  status: Generation['status']
+  packs: Array<{
+    id: string
+    styleName: string
+    stickersCompleted: number
+  }>
+  totalStickersPerPack: number
+}
+
 interface StickerWithBuffer {
   sticker: Sticker
   buffer: Buffer
 }
 
 type ProgressCallback = (progress: PackGenerationProgress) => void
+
+const STALE_PACK_GENERATION_MINUTES = 15
 
 /**
  * Generate a complete sticker pack
@@ -68,6 +83,7 @@ export async function generateStickerPack(
   const supabase = createAdminClient()
   const errors: string[] = []
   const count = input.count ?? 10
+  let createdPackId: string | null = null
 
   const reportProgress = (progress: Partial<PackGenerationProgress>) => {
     onProgress?.({
@@ -111,6 +127,7 @@ export async function generateStickerPack(
     if (packError || !pack) {
       throw new Error(`Failed to create pack record: ${packError?.message}`)
     }
+    createdPackId = pack.id
 
     // Step 3: Generate and process images
     reportProgress({
@@ -124,6 +141,8 @@ export async function generateStickerPack(
       input.generationId,
       prompts,
       supabase,
+      input.referenceImageBase64,
+      input.referenceImageMimeType,
       (completed) => {
         reportProgress({
           status: 'generating_images',
@@ -137,6 +156,10 @@ export async function generateStickerPack(
 
     if (stickersWithBuffers.length === 0) {
       throw new Error('No stickers were generated successfully')
+    }
+
+    if (stickersWithBuffers.length < count) {
+      throw new Error(`Only ${stickersWithBuffers.length}/${count} stickers were generated`)
     }
 
     const stickers = stickersWithBuffers.map(s => s.sticker)
@@ -172,15 +195,6 @@ export async function generateStickerPack(
         .eq('id', pack.id)
     }
 
-    // Update generation status
-    await supabase
-      .from('generations')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', input.generationId)
-
     reportProgress({
       status: 'completed',
       currentStep: 4,
@@ -191,18 +205,18 @@ export async function generateStickerPack(
     return {
       pack: { ...pack, zip_storage_path: zipUrl },
       stickers,
-      zipUrl: zipUrl ? getPublicUrl(supabase, storageConfig.stickerBucket, zipUrl) : null,
+      zipUrl: zipUrl
+        ? await getSignedUrl(supabase, storageConfig.stickerBucket, zipUrl, 60 * 60)
+        : null,
       errors,
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     errors.push(message)
 
-    // Update generation as failed
-    await supabase
-      .from('generations')
-      .update({ status: 'failed' })
-      .eq('id', input.generationId)
+    if (createdPackId) {
+      await deletePacksWithArtifacts([createdPackId])
+    }
 
     reportProgress({
       status: 'failed',
@@ -223,6 +237,8 @@ async function generateStickersInBatches(
   generationId: string,
   prompts: GeneratedStickerPrompt[],
   supabase: ReturnType<typeof createAdminClient>,
+  referenceImageBase64: string | undefined,
+  referenceImageMimeType: string | undefined,
   onProgress: (completed: number) => void,
   errors: string[]
 ): Promise<StickerWithBuffer[]> {
@@ -240,7 +256,9 @@ async function generateStickersInBatches(
           generationId,
           prompt,
           i + batchIndex + 1, // 1-indexed sequence number
-          supabase
+          supabase,
+          referenceImageBase64,
+          referenceImageMimeType
         )
       )
     )
@@ -274,12 +292,18 @@ async function generateSingleSticker(
   prompt: GeneratedStickerPrompt,
   sequenceNumber: number,
   supabase: ReturnType<typeof createAdminClient>,
+  referenceImageBase64?: string,
+  referenceImageMimeType?: string,
   retryCount = 0
 ): Promise<StickerWithBuffer> {
   try {
     // Generate image (with automatic fallback)
     const result = await generateImageWithFallback({
       prompt: prompt.fullPrompt,
+      referenceImage: referenceImageBase64,
+      referenceImageMimeType,
+      maxAttemptsPerModel: 1,
+      maxFallbackModels: 2,
     })
 
     // Convert to base64 if needed
@@ -340,6 +364,8 @@ async function generateSingleSticker(
           prompt,
           sequenceNumber,
           supabase,
+          referenceImageBase64,
+          referenceImageMimeType,
           retryCount + 1
         )
       }
@@ -433,7 +459,7 @@ async function createAndStorePackZip(
 /**
  * Get generation progress from database
  */
-export async function getGenerationProgress(generationId: string): Promise<PackGenerationProgress | null> {
+export async function getGenerationProgress(generationId: string): Promise<GenerationProgressSnapshot | null> {
   const supabase = createAdminClient()
 
   const { data: generation } = await supabase
@@ -446,78 +472,121 @@ export async function getGenerationProgress(generationId: string): Promise<PackG
     return null
   }
 
-  const pack = (generation as Generation & { sticker_packs: (StickerPack & { stickers: Sticker[] })[] }).sticker_packs?.[0]
-  const completedStickers = pack?.stickers?.length ?? 0
+  const packs = (generation as Generation & {
+    sticker_packs: Array<StickerPack & { stickers: Sticker[] }>
+  }).sticker_packs ?? []
 
   return {
-    status: generation.status as PackGenerationProgress['status'],
-    currentStep: getStepFromStatus(generation.status),
-    totalSteps: 4,
-    message: getMessageFromStatus(generation.status, completedStickers),
-    completedStickers,
-    totalStickers: 10, // Default pack size
+    status: generation.status,
+    packs: packs.map((pack) => ({
+      id: pack.id,
+      styleName: pack.style_name,
+      stickersCompleted: pack.stickers?.length ?? 0,
+    })),
+    totalStickersPerPack: generationConfig.defaultPackSize,
   }
 }
 
-function getStepFromStatus(status: string): number {
-  switch (status) {
-    case 'pending': return 0
-    case 'processing': return 2
-    case 'completed': return 4
-    case 'failed': return 0
-    default: return 0
+export async function deletePacksWithArtifacts(packIds: string[]): Promise<void> {
+  if (packIds.length === 0) return
+
+  const supabase = createAdminClient()
+  const { data: packs, error: packsError } = await supabase
+    .from('sticker_packs')
+    .select('id, zip_storage_path, marketplace_zip_path')
+    .in('id', packIds)
+
+  if (packsError) {
+    throw new Error(`Failed to fetch packs for cleanup: ${packsError.message}`)
+  }
+
+  const { data: stickers, error: stickersError } = await supabase
+    .from('stickers')
+    .select('storage_path')
+    .in('pack_id', packIds)
+
+  if (stickersError) {
+    throw new Error(`Failed to fetch stickers for cleanup: ${stickersError.message}`)
+  }
+
+  const storagePaths = new Set<string>()
+  for (const pack of packs ?? []) {
+    if (pack.zip_storage_path) storagePaths.add(pack.zip_storage_path)
+    if (pack.marketplace_zip_path) storagePaths.add(pack.marketplace_zip_path)
+  }
+  for (const sticker of stickers ?? []) {
+    storagePaths.add(sticker.storage_path)
+  }
+
+  const paths = [...storagePaths]
+  for (let i = 0; i < paths.length; i += 100) {
+    const chunk = paths.slice(i, i + 100)
+    const { error } = await supabase.storage
+      .from(storageConfig.stickerBucket)
+      .remove(chunk)
+
+    if (error) {
+      throw new Error(`Failed to remove pack storage artifacts: ${error.message}`)
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('sticker_packs')
+    .delete()
+    .in('id', packIds)
+
+  if (deleteError) {
+    throw new Error(`Failed to delete pack rows: ${deleteError.message}`)
   }
 }
 
-function getMessageFromStatus(status: string, completed: number): string {
-  switch (status) {
-    case 'pending': return 'Waiting to start...'
-    case 'processing': return `Generating stickers (${completed}/10)...`
-    case 'completed': return 'Pack generation complete!'
-    case 'failed': return 'Generation failed'
-    default: return 'Unknown status'
+export async function reconcileStalePackGeneration(
+  generation: Pick<
+    Generation,
+    | 'id'
+    | 'status'
+    | 'pack_generation_started_at'
+    | 'pack_credit_cost'
+  >
+): Promise<boolean> {
+  if (generation.status !== 'processing' || !generation.pack_generation_started_at) {
+    return false
   }
+
+  const startedAt = new Date(generation.pack_generation_started_at).getTime()
+  const staleAfterMs = STALE_PACK_GENERATION_MINUTES * 60 * 1000
+  if (Number.isNaN(startedAt) || Date.now() - startedAt < staleAfterMs) {
+    return false
+  }
+
+  const supabase = createAdminClient()
+  const { data: packs, error: packsError } = await supabase
+    .from('sticker_packs')
+    .select('id')
+    .eq('generation_id', generation.id)
+
+  if (packsError) {
+    throw new Error(`Failed to fetch stale packs: ${packsError.message}`)
+  }
+
+  await deletePacksWithArtifacts((packs ?? []).map((pack) => pack.id))
+  await refundPackGenerationCharge(generation.id, generation.pack_credit_cost)
+
+  const { error } = await supabase
+    .from('generations')
+    .update({
+      status: 'failed',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', generation.id)
+
+  if (error) {
+    throw new Error(`Failed to mark stale generation failed: ${error.message}`)
+  }
+
+  return true
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-/**
- * Generate multiple packs from selected styles
- */
-export async function generateMultiplePacks(
-  generationId: string,
-  selectedStyles: Array<{
-    stylePreviewId: string
-    styleName: string
-    style: FidelityLevel
-  }>,
-  commonInput: {
-    characterPrompt: string
-    language: Language
-    personalContext?: string
-  },
-  onProgress?: (styleIndex: number, progress: PackGenerationProgress) => void
-): Promise<PackGenerationResult[]> {
-  const results: PackGenerationResult[] = []
-
-  for (let i = 0; i < selectedStyles.length; i++) {
-    const styleInput = selectedStyles[i]
-
-    const result = await generateStickerPack(
-      {
-        generationId,
-        stylePreviewId: styleInput.stylePreviewId,
-        styleName: styleInput.styleName,
-        style: styleInput.style,
-        ...commonInput,
-      },
-      (progress) => onProgress?.(i, progress)
-    )
-
-    results.push(result)
-  }
-
-  return results
 }

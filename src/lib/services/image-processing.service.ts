@@ -56,7 +56,7 @@ export async function processForLine(
   console.log(`[image-processing] Original dimensions: ${metadata.width}x${metadata.height}`)
 
   // Start with base processing - ensure alpha channel
-  let pipeline = sharp(imageBuffer)
+  const pipeline = sharp(imageBuffer)
     .ensureAlpha()
     .resize({
       width: opts.width,
@@ -86,49 +86,40 @@ async function compressToSize(
   options: ProcessingOptions
 ): Promise<Buffer> {
   const maxBytes = (options.maxSizeKB ?? 300) * 1024
-  let quality = 100
-  let result = imageBuffer
+  let width = options.width ?? STICKER_DIMENSIONS.width
+  let height = options.height ?? STICKER_DIMENSIONS.height
 
-  // Try progressively lower quality settings
-  while (quality > 10) {
-    result = await sharp(imageBuffer)
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const result = await sharp(imageBuffer)
       .resize({
-        width: options.width,
-        height: options.height,
+        width,
+        height,
         fit: options.maintainAspectRatio ? 'inside' : 'fill',
         withoutEnlargement: true,
       })
       .png({
         compressionLevel: 9,
-        quality,
+        adaptiveFiltering: true,
       })
       .toBuffer()
 
     if (result.length <= maxBytes) {
-      break
+      return result
     }
 
-    quality -= 10
+    width = Math.max(2, Math.floor(width * 0.9))
+    height = Math.max(2, Math.floor(height * 0.9))
   }
 
-  // If still too large, reduce dimensions
-  if (result.length > maxBytes) {
-    const scaleFactor = Math.sqrt(maxBytes / result.length)
-    const newWidth = Math.floor((options.width ?? STICKER_DIMENSIONS.width) * scaleFactor)
-    const newHeight = Math.floor((options.height ?? STICKER_DIMENSIONS.height) * scaleFactor)
-
-    result = await sharp(imageBuffer)
-      .resize({
-        width: newWidth,
-        height: newHeight,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .png({ compressionLevel: 9 })
-      .toBuffer()
-  }
-
-  return result
+  return sharp(imageBuffer)
+    .resize({
+      width,
+      height,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
+    .toBuffer()
 }
 
 /**

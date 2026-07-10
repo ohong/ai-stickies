@@ -7,10 +7,13 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/src/lib/supabase/admin'
-import { getSessionIdFromCookie } from '@/src/lib/services/session.service'
 import { storageConfig } from '@/src/lib/config'
 import { createMultiPackZip } from '@/src/lib/utils/zip'
 import { createMainImageComposite, createTabImage } from '@/src/lib/services/image-processing.service'
+import {
+  AuthorizationError,
+  requireGenerationAccess,
+} from '@/src/lib/services/authorization.service'
 import type { Sticker, StickerPack, Generation } from '@/src/types/database'
 
 interface PackWithStickers extends StickerPack {
@@ -30,39 +33,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'generationId required' }, { status: 400 })
     }
 
-    // Verify session
-    const sessionId = await getSessionIdFromCookie()
-    if (!sessionId) {
-      return NextResponse.json({ error: 'No session found' }, { status: 401 })
-    }
-
     const supabase = createAdminClient()
 
-    // Fetch generation with all packs and stickers
-    const { data: generation, error: genError } = await supabase
-      .from('generations')
-      .select(`
+    const { generation } = await requireGenerationAccess<GenerationWithPacks>(
+      generationId,
+      `
         *,
         sticker_packs (
           *,
           stickers (*)
         )
-      `)
-      .eq('id', generationId)
-      .single()
+      `
+    )
 
-    if (genError || !generation) {
-      return NextResponse.json({ error: 'Generation not found' }, { status: 404 })
-    }
-
-    const genData = generation as unknown as GenerationWithPacks
-
-    // Verify ownership
-    if (genData.session_id !== sessionId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
-
-    const packs = genData.sticker_packs
+    const packs = generation.sticker_packs
     if (!packs || packs.length === 0) {
       return NextResponse.json({ error: 'No packs in generation' }, { status: 400 })
     }
@@ -144,6 +128,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     })
   } catch (error) {
     console.error('Download all error:', error)
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Download failed' },
       { status: 500 }

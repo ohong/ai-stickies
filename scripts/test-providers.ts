@@ -1,37 +1,56 @@
 #!/usr/bin/env bun
-/**
- * Test AI Provider Configuration
- */
 
-import { featureFlags } from '../src/lib/config'
-import { getDefaultProvider, getAvailableProviders } from '../src/lib/ai/provider'
-import * as flux from '../src/lib/ai/flux'
-import * as fal from '../src/lib/ai/fal'
+import { getAvailableModels, getDefaultModel, MODELS } from '../src/lib/ai/registry'
+import { generateImageWithFallback } from '../src/lib/ai/provider'
 
-console.log('🧪 AI Provider Configuration Test\n')
-
-console.log('Feature Flags:')
-console.log(`  FLUX enabled: ${featureFlags.enableFlux}`)
-console.log(`  Fal enabled: ${featureFlags.enableFal}`)
+console.log('AI image model configuration')
+console.log('')
+console.log('Registry order:')
+for (const model of MODELS) {
+  console.log(`  ${model.id} -> ${model.adapter}:${model.remoteModel}`)
+}
 console.log('')
 
-console.log('Provider Availability:')
-console.log(`  FLUX available: ${flux.isFluxAvailable()}`)
-console.log(`  Fal available: ${fal.isFalAvailable()}`)
-console.log('')
-
-console.log('Available Providers:', getAvailableProviders())
-console.log('')
+const availableModels = getAvailableModels()
+console.log('Available models:', availableModels.map((model) => model.id))
 
 try {
-  const defaultProvider = getDefaultProvider()
-  console.log(`✅ Default Provider: ${defaultProvider.toUpperCase()}`)
-
-  if (defaultProvider === 'fal') {
-    console.log('\n✨ Fal (nano-banana-2) will be used for image generation!')
-  } else {
-    console.log('\n⚠️  FLUX will be used (Fal not available)')
-  }
+  console.log('Default model:', getDefaultModel().id)
 } catch (error) {
-  console.error('❌ No providers available:', error)
+  console.error('No default model:', error)
+  process.exit(1)
 }
+
+console.log('')
+console.log('Generating one smoke-test image per available model...')
+
+let failureCount = 0
+
+for (const model of availableModels) {
+  try {
+    const result = await generateImageWithFallback({
+      model: model.id,
+      prompt: 'LINE sticker of a cheerful person waving, transparent background, bold outline',
+      maxAttemptsPerModel: 1,
+      maxFallbackModels: 1,
+    })
+    const hasImage = Boolean(result.imageBase64 || result.imageUrl)
+    if (hasImage) {
+      console.log(`${model.id}: ok`)
+    } else {
+      failureCount += 1
+      console.error(`${model.id}: missing image data`)
+    }
+  } catch (error) {
+    failureCount += 1
+    console.error(`${model.id}: failed`)
+    console.error(error)
+  }
+}
+
+if (failureCount > 0) {
+  console.error(`Provider smoke test failed for ${failureCount} model(s).`)
+  process.exit(1)
+}
+
+console.log('All available image providers passed.')

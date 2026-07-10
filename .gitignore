@@ -12,6 +12,7 @@ node_modules
 
 # testing
 /coverage
+/playwright-report
 
 # next.js
 /.next/
@@ -50,3 +51,12 @@ next-env.d.ts
 .cursor/
 .gemini/
 .trae/
+
+# evicted media and side projects
+my-video/
+trailer/
+hero-section-sticker/
+ai-stickies-demo/
+AI Stickies DEMO.mp4
+demo.gif
+heatmap-last-year.png

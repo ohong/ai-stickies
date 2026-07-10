@@ -1,26 +1,36 @@
 /**
- * Unified AI provider interface
- * Abstracts FLUX and Fal.ai behind common interface
+ * Unified AI model interface.
+ * Models are selected through the registry and dispatched to transport adapters.
  */
 
 import * as flux from './flux'
 import * as fal from './fal'
-import { featureFlags } from '../config'
+import * as openai from './openai'
+import {
+  getAvailableModels as getRegistryAvailableModels,
+  getDefaultModel as getRegistryDefaultModel,
+  getModel,
+  isModelAvailable,
+  type ModelEntry,
+} from './registry'
 
-export type ImageProvider = 'flux' | 'fal'
+export type ImageProvider = string
 
 export interface GenerateImageOptions {
   prompt: string
-  referenceImage?: string // base64 for Fal, URL or base64 for FLUX
+  referenceImage?: string
   referenceImageMimeType?: string
   provider?: ImageProvider
+  model?: ImageProvider
   width?: number
   height?: number
+  maxAttemptsPerModel?: number
+  maxFallbackModels?: number
 }
 
 export interface GenerateImageResult {
-  imageUrl?: string // FLUX returns URL
-  imageBase64?: string // Fal returns base64
+  imageUrl?: string
+  imageBase64?: string
   mimeType?: string
   provider: ImageProvider
 }
@@ -36,152 +46,83 @@ export class ProviderError extends Error {
   }
 }
 
-/**
- * Get default provider based on config and availability
- */
 export function getDefaultProvider(): ImageProvider {
-  // Prefer Fal (nano-banana-2) if enabled and available
-  if (featureFlags.enableFal && fal.isFalAvailable()) {
-    return 'fal'
+  try {
+    return getRegistryDefaultModel().id
+  } catch (error) {
+    throw new ProviderError(
+      error instanceof Error ? error.message : 'No image model available',
+      'unknown',
+      'NO_PROVIDER'
+    )
   }
-
-  // Fall back to FLUX
-  if (featureFlags.enableFlux && flux.isFluxAvailable()) {
-    return 'flux'
-  }
-
-  throw new ProviderError(
-    'No image provider available. Configure FAL_API_KEY or BFL_API_KEY.',
-    'fal',
-    'NO_PROVIDER'
-  )
 }
 
-/**
- * Check which providers are available
- */
 export function getAvailableProviders(): ImageProvider[] {
-  const providers: ImageProvider[] = []
-
-  if (featureFlags.enableFlux && flux.isFluxAvailable()) {
-    providers.push('flux')
-  }
-
-  if (featureFlags.enableFal && fal.isFalAvailable()) {
-    providers.push('fal')
-  }
-
-  return providers
+  return getRegistryAvailableModels().map((entry) => entry.id)
 }
 
-/**
- * Generate image using specified or default provider
- */
 export async function generateImage(
   options: GenerateImageOptions
 ): Promise<GenerateImageResult> {
-  const provider = options.provider ?? getDefaultProvider()
+  const model = resolveRequestedModel(options)
+
+  if (!isModelAvailable(model)) {
+    throw new ProviderError(`${model.id} not available`, model.id, 'NOT_AVAILABLE')
+  }
 
   try {
-    if (provider === 'flux') {
-      return await generateWithFlux(options)
-    } else {
-      return await generateWithFal(options)
+    const result = await generateWithRetry(model, options)
+    return {
+      ...result,
+      provider: model.id,
     }
   } catch (error) {
-    // Wrap in ProviderError if not already
     if (error instanceof ProviderError) {
       throw error
     }
 
     const message = error instanceof Error ? error.message : 'Unknown error'
-    throw new ProviderError(message, provider, 'GENERATION_ERROR')
+    throw new ProviderError(message, model.id, 'GENERATION_ERROR')
   }
 }
 
-async function generateWithFlux(
-  options: GenerateImageOptions
-): Promise<GenerateImageResult> {
-  if (!flux.isFluxAvailable()) {
-    throw new ProviderError('FLUX not available', 'flux', 'NOT_AVAILABLE')
-  }
-
-  const result = await flux.generateImage({
-    prompt: options.prompt,
-    inputImage: options.referenceImage,
-    width: options.width,
-    height: options.height,
-  })
-
-  return {
-    imageUrl: result.imageUrl,
-    provider: 'flux',
-  }
-}
-
-async function generateWithFal(
-  options: GenerateImageOptions
-): Promise<GenerateImageResult> {
-  if (!fal.isFalAvailable()) {
-    throw new ProviderError('Fal not available', 'fal', 'NOT_AVAILABLE')
-  }
-
-  const result = await fal.generateImageWithRetry({
-    prompt: options.prompt,
-    referenceImage: options.referenceImage,
-    referenceImageMimeType: options.referenceImageMimeType,
-  })
-
-  return {
-    imageBase64: result.imageBase64,
-    mimeType: result.mimeType,
-    provider: 'fal',
-  }
-}
-
-/**
- * Generate image with automatic fallback
- * Tries primary provider, falls back to secondary on failure
- */
 export async function generateImageWithFallback(
   options: GenerateImageOptions
 ): Promise<GenerateImageResult> {
-  const providers = getAvailableProviders()
+  const availableModels = getRegistryAvailableModels()
 
-  if (providers.length === 0) {
+  if (availableModels.length === 0) {
     throw new ProviderError(
-      'No image providers available',
-      'flux',
+      'No image models available',
+      'unknown',
       'NO_PROVIDER'
     )
   }
 
-  // Put preferred provider first
-  const primaryProvider = options.provider ?? getDefaultProvider()
-  const orderedProviders = [
-    primaryProvider,
-    ...providers.filter(p => p !== primaryProvider),
-  ].filter((p, i, arr) => arr.indexOf(p) === i) // dedupe
+  const primaryModel = resolveRequestedModel(options)
+  const orderedModels = [
+    primaryModel,
+    ...availableModels.filter((model) => model.id !== primaryModel.id),
+  ].filter((model, index, models) => models.findIndex((m) => m.id === model.id) === index)
+  const modelsToTry = orderedModels.slice(0, options.maxFallbackModels ?? orderedModels.length)
 
   let lastError: Error | null = null
 
-  for (const provider of orderedProviders) {
+  for (const model of modelsToTry) {
+    if (!isModelAvailable(model)) continue
+
     try {
-      return await generateImage({ ...options, provider })
+      return await generateImage({ ...options, model: model.id, provider: undefined })
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error')
-      console.warn(`Provider ${provider} failed:`, lastError.message)
-
-      // Continue to next provider
+      console.warn(`Image model ${model.id} failed:`, lastError.message)
     }
   }
 
-  throw lastError ?? new ProviderError('All providers failed', primaryProvider, 'ALL_FAILED')
+  throw lastError ?? new ProviderError('All image models failed', primaryModel.id, 'ALL_FAILED')
 }
 
-/**
- * Convert image result to base64 (downloads URL if needed)
- */
 export async function resultToBase64(
   result: GenerateImageResult
 ): Promise<{ data: string; mimeType: string }> {
@@ -215,9 +156,6 @@ export async function resultToBase64(
   throw new ProviderError('No image data in result', result.provider, 'NO_DATA')
 }
 
-/**
- * Convert image result to URL (creates data URL if needed)
- */
 export function resultToUrl(result: GenerateImageResult): string {
   if (result.imageUrl) {
     return result.imageUrl
@@ -229,4 +167,90 @@ export function resultToUrl(result: GenerateImageResult): string {
   }
 
   throw new ProviderError('No image data in result', result.provider, 'NO_DATA')
+}
+
+function resolveRequestedModel(options: GenerateImageOptions): ModelEntry {
+  const requested = options.model ?? options.provider
+  if (requested) {
+    return getModel(normalizeModelId(requested))
+  }
+  return getRegistryDefaultModel()
+}
+
+function normalizeModelId(modelId: string): string {
+  if (modelId === 'fal') return 'nano-banana-2'
+  if (modelId === 'flux') return 'flux-2-pro'
+  return modelId
+}
+
+async function generateWithRetry(
+  model: ModelEntry,
+  options: GenerateImageOptions,
+  maxRetries = options.maxAttemptsPerModel ?? 3
+): Promise<Omit<GenerateImageResult, 'provider'>> {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await generateWithAdapter(model, options)
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown error')
+
+      if (isConfigError(error)) {
+        throw lastError
+      }
+
+      if (attempt < maxRetries - 1) {
+        const delay = Math.pow(2, attempt) * 1000
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+  }
+
+  throw lastError ?? new ProviderError('Generation failed after retries', model.id, 'MAX_RETRIES')
+}
+
+async function generateWithAdapter(
+  model: ModelEntry,
+  options: GenerateImageOptions
+): Promise<Omit<GenerateImageResult, 'provider'>> {
+  switch (model.adapter) {
+    case 'fal': {
+      const result = await fal.generateImage(model, {
+        prompt: options.prompt,
+        referenceImage: options.referenceImage,
+        referenceImageMimeType: options.referenceImageMimeType,
+      })
+      return {
+        imageBase64: result.imageBase64,
+        mimeType: result.mimeType,
+      }
+    }
+    case 'bfl': {
+      const result = await flux.generateImage(model, {
+        prompt: options.prompt,
+        inputImage: options.referenceImage,
+        width: options.width,
+        height: options.height,
+      })
+      return {
+        imageUrl: result.imageUrl,
+      }
+    }
+    case 'openai': {
+      const result = await openai.generateImage(model, {
+        prompt: options.prompt,
+        referenceImage: options.referenceImage,
+        referenceImageMimeType: options.referenceImageMimeType,
+      })
+      return {
+        imageBase64: result.imageBase64,
+        mimeType: result.mimeType,
+      }
+    }
+  }
+}
+
+function isConfigError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('API_KEY not configured')
 }

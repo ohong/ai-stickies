@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
@@ -13,7 +13,7 @@ import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
 import { useStyleSelection } from '@/src/hooks/use-style-selection'
 import type { GeneratedPreview } from '@/src/hooks/use-generation'
-import { parseApiResponse, readApiError } from '@/src/lib/utils/http'
+import { parseApiResponse } from '@/src/lib/utils/http'
 
 interface GenerationData {
   generation: {
@@ -27,6 +27,11 @@ function StylesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const generationId = searchParams.get('generationId')
+  const selectedParam = searchParams.get('selected')
+  const selectedIdsFromQuery = useMemo(
+    () => selectedParam?.split(',').filter(Boolean) ?? [],
+    [selectedParam]
+  )
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,8 +40,6 @@ function StylesContent() {
 
   const {
     remainingGenerations,
-    maxGenerations,
-    isLoading: sessionLoading,
   } = useSession()
 
   const {
@@ -45,6 +48,7 @@ function StylesContent() {
     estimatedTime,
     canProceed,
     toggleStyle,
+    selectAll,
     isSelected,
   } = useStyleSelection()
 
@@ -73,6 +77,17 @@ function StylesContent() {
     fetchGeneration()
   }, [generationId])
 
+  useEffect(() => {
+    if (!generationData || selectedIdsFromQuery.length === 0) return
+
+    const validIds = selectedIdsFromQuery.filter((id) =>
+      generationData.previews.some((preview) => preview.id === id)
+    )
+    if (validIds.length > 0) {
+      selectAll(validIds)
+    }
+  }, [generationData, selectedIdsFromQuery, selectAll])
+
   const handleGeneratePacks = async () => {
     if (!canProceed || !generationId) return
 
@@ -89,9 +104,18 @@ function StylesContent() {
       })
 
       if (!response.ok) {
-        throw new Error(
-          await readApiError(response, 'Failed to start pack generation')
-        )
+        const payload = await response.json().catch(() => null) as {
+          error?: string
+          code?: string
+        } | null
+
+        if (response.status === 401 && payload?.code === 'AUTH_REQUIRED') {
+          const next = `/create/styles?generationId=${generationId}&selected=${selectedStyleIds.join(',')}`
+          router.push(`/login?next=${encodeURIComponent(next)}`)
+          return
+        }
+
+        throw new Error(payload?.error ?? 'Failed to start pack generation')
       }
 
       router.push(`/create/results?generationId=${generationId}`)
@@ -149,18 +173,6 @@ function StylesContent() {
             Back to Create
           </Button>
         </div>
-      </div>
-    )
-  }
-
-  if (isGeneratingPacks) {
-    return (
-      <div className="min-h-dvh bg-background flex items-center justify-center">
-        <GenerationProgress
-          progress={30}
-          currentStyle="Generating sticker packs"
-          totalStyles={selectedCount}
-        />
       </div>
     )
   }
@@ -224,11 +236,11 @@ function StylesContent() {
           <Button
             size="lg"
             onClick={handleGeneratePacks}
-            disabled={!canProceed}
+            disabled={!canProceed || isGeneratingPacks}
             className="w-full sm:w-auto min-w-[200px] shadow-md"
           >
             <Sparkles className="size-4 mr-2" />
-            Generate {selectedCount > 0 ? selectedCount : ''} Pack{selectedCount !== 1 ? 's' : ''}
+            {isGeneratingPacks ? 'Starting...' : `Generate ${selectedCount > 0 ? selectedCount : ''} Pack${selectedCount !== 1 ? 's' : ''}`}
             <ArrowRight className="size-4 ml-2" />
           </Button>
         </div>
@@ -246,11 +258,11 @@ function StylesContent() {
           </Button>
           <Button
             onClick={handleGeneratePacks}
-            disabled={!canProceed}
+            disabled={!canProceed || isGeneratingPacks}
             className="flex-1 h-12 font-semibold shadow-md"
           >
             <Sparkles className="size-4 mr-2" />
-            Generate {selectedCount > 0 ? selectedCount : ''} Pack{selectedCount !== 1 ? 's' : ''}
+            {isGeneratingPacks ? 'Starting...' : `Generate ${selectedCount > 0 ? selectedCount : ''} Pack${selectedCount !== 1 ? 's' : ''}`}
           </Button>
         </div>
         <p className="mt-1.5 text-center text-xs text-muted-foreground">

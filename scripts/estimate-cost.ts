@@ -22,7 +22,6 @@ const FAL_PER_IMAGE = 0.06 // $/image (0.5K resolution = 0.75× standard $0.08)
 
 const STICKERS_PER_PACK = 10
 const STYLE_PREVIEWS = 5 // generated before pack selection
-const LLM_CALLS_PER_PACK = 1 // one call generates all 10 prompts
 
 // ─── Token estimation ────────────────────────────────────────────────────────
 // Rough estimates based on the actual prompt templates in the codebase.

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/src/lib/supabase/admin'
+import { getUser } from '@/src/lib/services/auth.service'
 import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
 import { sessionConfig } from '@/src/lib/config'
 import type { Session, Generation } from '@/src/types/database'
@@ -130,6 +131,9 @@ function makeGeneration(overrides: Partial<Generation> = {}): Generation {
     provider: 'fal',
     created_at: '2026-01-01T00:00:00Z',
     completed_at: '2026-01-01T01:00:00Z',
+    pack_generation_started_at: null,
+    pack_credit_cost: 0,
+    pack_credits_refunded: 0,
     ...overrides,
   }
 }
@@ -142,19 +146,26 @@ let getSessionIdFromCookie: typeof import('@/src/lib/services/session.service').
 let getOrCreateSession: typeof import('@/src/lib/services/session.service').getOrCreateSession
 let checkRateLimit: typeof import('@/src/lib/services/session.service').checkRateLimit
 let incrementGenerationCount: typeof import('@/src/lib/services/session.service').incrementGenerationCount
+let reserveGenerationCount: typeof import('@/src/lib/services/session.service').reserveGenerationCount
+let refundGenerationCount: typeof import('@/src/lib/services/session.service').refundGenerationCount
 let getSessionHistory: typeof import('@/src/lib/services/session.service').getSessionHistory
+let getSessionHistoryForActor: typeof import('@/src/lib/services/session.service').getSessionHistoryForActor
 let getStylePreviewCount: typeof import('@/src/lib/services/session.service').getStylePreviewCount
 let touchSession: typeof import('@/src/lib/services/session.service').touchSession
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  vi.mocked(getUser).mockResolvedValue(null)
 
   const mod = await import('@/src/lib/services/session.service')
   getSessionIdFromCookie = mod.getSessionIdFromCookie
   getOrCreateSession = mod.getOrCreateSession
   checkRateLimit = mod.checkRateLimit
   incrementGenerationCount = mod.incrementGenerationCount
+  reserveGenerationCount = mod.reserveGenerationCount
+  refundGenerationCount = mod.refundGenerationCount
   getSessionHistory = mod.getSessionHistory
+  getSessionHistoryForActor = mod.getSessionHistoryForActor
   getStylePreviewCount = mod.getStylePreviewCount
   touchSession = mod.touchSession
 })
@@ -245,6 +256,30 @@ describe('getOrCreateSession', () => {
     expect(result).toEqual(newSession)
     expect(insertBuilder.insert).toHaveBeenCalled()
   })
+
+  it('sets the session cookie when an authenticated user has an existing session', async () => {
+    const store = mockCookieStore({})
+    const existingSession = makeSession({ id: 'user-session', user_id: 'user-1' })
+    vi.mocked(getUser).mockResolvedValue({ id: 'user-1' } as any)
+
+    const { supabase, forTable } = createMockSupabase()
+    vi.mocked(createAdminClient).mockReturnValue(supabase as unknown as ReturnType<typeof createAdminClient>)
+
+    const userSessionBuilder = forTable('sessions')
+    userSessionBuilder.single = vi.fn().mockResolvedValue({ data: existingSession, error: null })
+
+    const touchBuilder = forTable('sessions')
+    touchBuilder.eq = vi.fn().mockResolvedValue({ data: null, error: null })
+
+    const result = await getOrCreateSession()
+
+    expect(result).toEqual(existingSession)
+    expect(store.set).toHaveBeenCalledWith(
+      SESSION_COOKIE_NAME,
+      'user-session',
+      expect.objectContaining({ httpOnly: true, path: '/' })
+    )
+  })
 })
 
 // =========================================================================
@@ -317,52 +352,81 @@ describe('checkRateLimit', () => {
 
 describe('incrementGenerationCount', () => {
   it('increments the generation count and returns the new value', async () => {
-    const session = makeSession({ generation_count: 5 })
-    const { supabase, forTable } = createMockSupabase()
-    vi.mocked(createAdminClient).mockReturnValue(supabase as unknown as ReturnType<typeof createAdminClient>)
-
-    // First from('sessions') call: getSession -> select -> eq -> single
-    const selectBuilder = forTable('sessions')
-    selectBuilder.single = vi.fn().mockResolvedValue({ data: session, error: null })
-
-    // Second from('sessions') call: update -> eq (terminal)
-    const updateBuilder = forTable('sessions')
-    updateBuilder.eq = vi.fn().mockResolvedValue({ data: null, error: null })
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ generation_count: 6, max_generations: 10, remaining: 4 }],
+      error: null,
+    })
+    vi.mocked(createAdminClient).mockReturnValue({ rpc } as unknown as ReturnType<typeof createAdminClient>)
 
     const newCount = await incrementGenerationCount('session-1')
 
     expect(newCount).toBe(6)
-    expect(updateBuilder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ generation_count: 6 })
-    )
+    expect(rpc).toHaveBeenCalledWith('reserve_session_generations', {
+      p_session_id: 'session-1',
+      p_amount: 1,
+    })
   })
 
   it('throws when session is not found', async () => {
-    const { supabase, forTable } = createMockSupabase()
-    vi.mocked(createAdminClient).mockReturnValue(supabase as unknown as ReturnType<typeof createAdminClient>)
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'RATE_LIMIT_EXCEEDED' },
+    })
+    vi.mocked(createAdminClient).mockReturnValue({ rpc } as unknown as ReturnType<typeof createAdminClient>)
 
-    const builder = forTable('sessions')
-    builder.single = vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } })
-
-    await expect(incrementGenerationCount('nonexistent')).rejects.toThrow('Session not found')
+    await expect(incrementGenerationCount('nonexistent')).rejects.toThrow('No generations remaining')
   })
 
   it('throws on DB update error', async () => {
-    const session = makeSession({ generation_count: 5 })
-    const { supabase, forTable } = createMockSupabase()
-    vi.mocked(createAdminClient).mockReturnValue(supabase as unknown as ReturnType<typeof createAdminClient>)
-
-    // getSession succeeds
-    const selectBuilder = forTable('sessions')
-    selectBuilder.single = vi.fn().mockResolvedValue({ data: session, error: null })
-
-    // update fails
-    const updateBuilder = forTable('sessions')
-    updateBuilder.eq = vi.fn().mockResolvedValue({ data: null, error: { message: 'update failed' } })
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'update failed' },
+    })
+    vi.mocked(createAdminClient).mockReturnValue({ rpc } as unknown as ReturnType<typeof createAdminClient>)
 
     await expect(incrementGenerationCount('session-1')).rejects.toThrow(
-      'Failed to increment generation count: update failed'
+      'Failed to reserve generation quota: update failed'
     )
+  })
+})
+
+describe('reserveGenerationCount and refundGenerationCount', () => {
+  it('reserves session quota through the reserve RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ generation_count: 5, max_generations: 10, remaining: 5 }],
+      error: null,
+    })
+    vi.mocked(createAdminClient).mockReturnValue({ rpc } as unknown as ReturnType<typeof createAdminClient>)
+
+    await expect(reserveGenerationCount('session-1', 2)).resolves.toEqual({
+      generationCount: 5,
+      remaining: 5,
+      total: 10,
+    })
+
+    expect(rpc).toHaveBeenCalledWith('reserve_session_generations', {
+      p_session_id: 'session-1',
+      p_amount: 2,
+    })
+  })
+
+  it('refunds session quota through the refund RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ generation_count: 3, max_generations: 10, remaining: 7 }],
+      error: null,
+    })
+    vi.mocked(createAdminClient).mockReturnValue({ rpc } as unknown as ReturnType<typeof createAdminClient>)
+
+    await expect(refundGenerationCount('session-1', 2)).resolves.toEqual({
+      generationCount: 3,
+      remaining: 7,
+      total: 10,
+    })
+
+    expect(rpc).toHaveBeenCalledWith('refund_session_generations', {
+      p_session_id: 'session-1',
+      p_amount: 2,
+    })
   })
 })
 
@@ -411,6 +475,22 @@ describe('getSessionHistory', () => {
     await expect(getSessionHistory('session-1')).rejects.toThrow(
       'Failed to fetch session history: db error'
     )
+  })
+})
+
+describe('getSessionHistoryForActor', () => {
+  it('queries by session and user ownership when userId is present', async () => {
+    const generations = [makeGeneration({ id: 'gen-user', user_id: 'user-1' })]
+    const { supabase, forTable } = createMockSupabase()
+    vi.mocked(createAdminClient).mockReturnValue(supabase as unknown as ReturnType<typeof createAdminClient>)
+
+    const builder = forTable('generations')
+    builder.or = vi.fn().mockResolvedValue({ data: generations, error: null })
+
+    const result = await getSessionHistoryForActor('session-1', 'user-1')
+
+    expect(result).toEqual(generations)
+    expect(builder.or).toHaveBeenCalledWith('session_id.eq.session-1,user_id.eq.user-1')
   })
 })
 

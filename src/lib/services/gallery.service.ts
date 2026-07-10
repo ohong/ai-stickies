@@ -4,7 +4,7 @@
  */
 
 import { createAdminClient } from '../supabase/admin'
-import { getPublicUrl } from '../utils/storage'
+import { getSignedUrl } from '../utils/storage'
 import { storageConfig } from '../config'
 import type { Sticker } from '../../types/database'
 
@@ -46,14 +46,14 @@ export async function getPublicPacks(options: {
     return { packs: [], total: 0 }
   }
 
-  const publicPacks: PublicPack[] = packs.map((pack) => {
+  const publicPacks: PublicPack[] = await Promise.all(packs.map(async (pack) => {
     const stickers = ((pack.stickers ?? []) as Pick<Sticker, 'storage_path' | 'sequence_number'>[])
       .sort((a, b) => a.sequence_number - b.sequence_number)
       .slice(0, 4)
 
-    const thumbnails = stickers.map((s) =>
-      getPublicUrl(supabase, storageConfig.stickerBucket, s.storage_path)
-    )
+    const thumbnails = await Promise.all(stickers.map((s) =>
+      getSignedUrl(supabase, storageConfig.stickerBucket, s.storage_path, 60 * 60)
+    ))
 
     return {
       id: pack.id,
@@ -63,7 +63,7 @@ export async function getPublicPacks(options: {
       createdAt: pack.created_at,
       thumbnails,
     }
-  })
+  }))
 
   return { packs: publicPacks, total: count ?? 0 }
 }
@@ -86,14 +86,14 @@ export async function getFeaturedPacks(limit: number): Promise<PublicPack[]> {
     return []
   }
 
-  return packs.map((pack) => {
+  return Promise.all(packs.map(async (pack) => {
     const stickers = ((pack.stickers ?? []) as Pick<Sticker, 'storage_path' | 'sequence_number'>[])
       .sort((a, b) => a.sequence_number - b.sequence_number)
       .slice(0, 4)
 
-    const thumbnails = stickers.map((s) =>
-      getPublicUrl(supabase, storageConfig.stickerBucket, s.storage_path)
-    )
+    const thumbnails = await Promise.all(stickers.map((s) =>
+      getSignedUrl(supabase, storageConfig.stickerBucket, s.storage_path, 60 * 60)
+    ))
 
     return {
       id: pack.id,
@@ -103,5 +103,5 @@ export async function getFeaturedPacks(limit: number): Promise<PublicPack[]> {
       createdAt: pack.created_at,
       thumbnails,
     }
-  })
+  }))
 }

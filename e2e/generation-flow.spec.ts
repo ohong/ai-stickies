@@ -8,35 +8,35 @@ const mockPreviews = [
     styleName: 'Chibi',
     fidelityLevel: 'chibi',
     description: 'Cute chibi style stickers',
-    previewUrl: 'https://example.com/previews/chibi.png',
+    previewUrl: 'https://test.supabase.co/storage/v1/object/public/stickers/previews/chibi.png',
   },
   {
     id: 'preview-2',
     styleName: 'Minimalist',
     fidelityLevel: 'minimalist',
     description: 'Clean minimalist style stickers',
-    previewUrl: 'https://example.com/previews/minimalist.png',
+    previewUrl: 'https://test.supabase.co/storage/v1/object/public/stickers/previews/minimalist.png',
   },
   {
     id: 'preview-3',
     styleName: 'Abstract',
     fidelityLevel: 'abstract',
     description: 'Artistic abstract style stickers',
-    previewUrl: 'https://example.com/previews/abstract.png',
+    previewUrl: 'https://test.supabase.co/storage/v1/object/public/stickers/previews/abstract.png',
   },
   {
     id: 'preview-4',
     styleName: 'High Fidelity',
     fidelityLevel: 'high-fidelity',
     description: 'Detailed high fidelity stickers',
-    previewUrl: 'https://example.com/previews/high-fidelity.png',
+    previewUrl: 'https://test.supabase.co/storage/v1/object/public/stickers/previews/high-fidelity.png',
   },
   {
     id: 'preview-5',
     styleName: 'Retro',
     fidelityLevel: 'retro',
     description: 'Nostalgic retro style stickers',
-    previewUrl: 'https://example.com/previews/retro.png',
+    previewUrl: 'https://test.supabase.co/storage/v1/object/public/stickers/previews/retro.png',
   },
 ]
 
@@ -81,7 +81,7 @@ async function mockGenerationApi(page: Page) {
 async function mockGeneratePacksApi(page: Page) {
   await page.route('**/api/generate/packs', (route) => {
     route.fulfill({
-      status: 200,
+      status: 202,
       contentType: 'application/json',
       body: JSON.stringify({
         success: true,
@@ -132,7 +132,7 @@ test.describe('Styles Page - Style Selection', () => {
 
     // Verify each style name is displayed
     for (const preview of mockPreviews) {
-      await expect(page.getByText(preview.styleName)).toBeVisible()
+      await expect(page.getByRole('heading', { name: preview.styleName })).toBeVisible()
     }
   })
 
@@ -197,6 +197,35 @@ test.describe('Styles Page - Style Selection', () => {
     const estimatedTime = page.getByText(/est\.\s*\d+\s*min/i)
     await expect(estimatedTime).toBeVisible()
   })
+
+  test('auth-required pack generation redirects to login with selected styles preserved', async ({ page }) => {
+    await page.unroute('**/api/generate/packs')
+    await page.route('**/api/generate/packs', (route) => {
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: 'Login required to generate sticker packs',
+          code: 'AUTH_REQUIRED',
+        }),
+      })
+    })
+
+    await page.locator('[role="checkbox"]').nth(0).click()
+    await page.locator('[role="checkbox"]').nth(1).click()
+
+    await page.getByRole('button', { name: /generate 2 packs/i }).click()
+    await expect(page).toHaveURL(/\/login\?next=/)
+    await expect(page.getByRole('heading', { name: /sign in to ai stickies/i })).toBeVisible()
+
+    const loginUrl = new URL(page.url())
+    const next = loginUrl.searchParams.get('next')
+    expect(next).toBe(`/create/styles?generationId=${MOCK_GENERATION_ID}&selected=preview-1,preview-2`)
+
+    await page.goto(next!)
+    await expect(page.locator('[role="checkbox"]').nth(0)).toHaveAttribute('aria-checked', 'true')
+    await expect(page.locator('[role="checkbox"]').nth(1)).toHaveAttribute('aria-checked', 'true')
+  })
 })
 
 // ==========================================================================
@@ -218,7 +247,6 @@ test.describe('Styles Page - Pack Info', () => {
     await mockGenerationApi(page)
     await page.goto(`/create/styles?generationId=${MOCK_GENERATION_ID}`)
 
-    // "Choose 1-5 styles to generate full sticker packs"
-    await expect(page.getByText(/choose 1-5 styles/i)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/tap to select 1-5 styles/i)).toBeVisible({ timeout: 10000 })
   })
 })

@@ -1,7 +1,7 @@
-const BASE_URL = 'https://aistickies.com'
+import { getAppUrl } from '@/src/lib/config'
 
 export function getShareUrl(slug: string): string {
-  return `${BASE_URL}/packs/${slug}`
+  return `${getAppUrl()}/packs/${slug}`
 }
 
 export function getTwitterShareUrl(url: string, text: string): string {

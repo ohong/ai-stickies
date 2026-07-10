@@ -3,10 +3,14 @@ import { createAdminClient } from '@/src/lib/supabase/admin'
 import {
   getSessionIdFromCookie,
   checkRateLimit,
-  incrementGenerationCount,
+  reserveGenerationCount,
+  refundGenerationCount,
 } from '@/src/lib/services/session.service'
 import { generateStylePreviews } from '@/src/lib/services/generation.service'
 import type { Language, Provider } from '@/src/types/database'
+
+export const runtime = 'nodejs'
+export const maxDuration = 300
 
 interface GeneratePreviewsRequest {
   uploadId: string
@@ -89,10 +93,15 @@ export async function POST(
       )
     }
 
-    // Generate style previews and increment count in parallel
-    // (increment doesn't depend on result, only needs sessionId)
-    const [result] = await Promise.all([
-      generateStylePreviews({
+    let quotaReserved = false
+    let remainingGenerations = rateLimit.remaining
+
+    try {
+      const quota = await reserveGenerationCount(sessionId, 1)
+      quotaReserved = true
+      remainingGenerations = quota.remaining
+
+      const result = await generateStylePreviews({
         sessionId,
         uploadId: body.uploadId,
         storagePath: upload.storage_path,
@@ -100,22 +109,34 @@ export async function POST(
         personalContext: body.personalContext,
         language: body.language,
         provider: body.provider,
-      }),
-      incrementGenerationCount(sessionId),
-    ])
+      })
 
-    // Get updated remaining count after increment
-    const updatedRateLimit = await checkRateLimit(sessionId)
-
-    return NextResponse.json({
-      generationId: result.generationId,
-      previews: result.previews,
-      remainingGenerations: updatedRateLimit.remaining,
-    })
+      return NextResponse.json({
+        generationId: result.generationId,
+        previews: result.previews,
+        remainingGenerations,
+      })
+    } catch (error) {
+      if (quotaReserved) {
+        try {
+          await refundGenerationCount(sessionId, 1)
+        } catch (refundError) {
+          console.error('Failed to refund preview quota:', refundError)
+        }
+      }
+      throw error
+    }
   } catch (error) {
     console.error('Preview generation error:', error)
+    if (error instanceof Error && error.message === 'No generations remaining') {
+      return NextResponse.json(
+        { error: 'No generations remaining. Please try again later.' },
+        { status: 403 }
+      )
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Generation failed' },
+      { error: 'Preview generation failed. Please try again.' },
       { status: 500 }
     )
   }

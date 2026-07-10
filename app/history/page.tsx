@@ -22,11 +22,7 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const {
-    remainingGenerations,
-    maxGenerations,
-    isLoading: sessionLoading,
-  } = useSession()
+  useSession()
 
   useEffect(() => {
     async function fetchHistory() {

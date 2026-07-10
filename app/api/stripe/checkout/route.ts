@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/src/lib/stripe/client'
+import { getStripe } from '@/src/lib/stripe/client'
 import { createAdminClient } from '@/src/lib/supabase/admin'
 import { createClient } from '@/src/lib/supabase/server'
 
@@ -15,6 +15,8 @@ interface CheckoutRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const stripe = getStripe()
+
     // Auth check: get user from Supabase session
     const supabaseAuth = await createClient()
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
@@ -50,6 +52,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Credit pack not found', code: 'NOT_FOUND' },
         { status: 404 }
+      )
+    }
+
+    if (pack.stripe_price_id.includes('placeholder')) {
+      return NextResponse.json(
+        { error: 'Credit pack is not configured for checkout', code: 'PRICE_NOT_CONFIGURED' },
+        { status: 503 }
       )
     }
 
@@ -117,7 +126,10 @@ export async function POST(request: NextRequest) {
 
     if (purchaseError) {
       console.error('Failed to create purchase record:', purchaseError.message)
-      // Don't block checkout — the webhook will still work
+      return NextResponse.json(
+        { error: 'Failed to create purchase record' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ url: session.url })

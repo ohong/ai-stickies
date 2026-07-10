@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Download, Sparkles, Store, Loader2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { SessionCounter } from '@/app/components/create/session-counter'
 import { useSession } from '@/src/hooks/use-session'
 import { useDownload } from '@/src/hooks/use-download'
@@ -30,14 +31,17 @@ interface StickerData {
 interface PackData {
   id: string
   styleName: string
+  stickersCompleted: number
   stickers: StickerData[]
   zipUrl: string | null
 }
 
 interface ResultsData {
+  status: 'pending' | 'processing' | 'completed' | 'failed'
   packs: PackData[]
   remainingGenerations: number
   errors: string[]
+  totalStickersPerPack: number
 }
 
 function ResultsContent() {
@@ -57,11 +61,7 @@ function ResultsContent() {
   const [isPlatformModalOpen, setIsPlatformModalOpen] = useState(false)
   const [exportingPlatform, setExportingPlatform] = useState<Platform | null>(null)
 
-  const {
-    remainingGenerations,
-    maxGenerations,
-    isLoading: sessionLoading,
-  } = useSession()
+  useSession()
 
   const {
     isDownloading,
@@ -82,6 +82,9 @@ function ResultsContent() {
       return
     }
 
+    let isMounted = true
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
     async function fetchResults() {
       try {
         const response = await fetch(`/api/generations/${generationId}/results`)
@@ -89,15 +92,33 @@ function ResultsContent() {
           response,
           'Failed to load results'
         )
+        if (!isMounted) return
         setResultsData(data)
+        setError(null)
+
+        if (data.status !== 'processing' && data.status !== 'pending' && intervalId) {
+          clearInterval(intervalId)
+          intervalId = null
+        }
       } catch (err) {
+        if (!isMounted) return
         setError(err instanceof Error ? err.message : 'Failed to load')
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchResults()
+    intervalId = setInterval(fetchResults, 2500)
+
+    return () => {
+      isMounted = false
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
   }, [generationId])
 
   const handleStickerClick = (sticker: StickerData, index: number, packStickers: StickerData[]) => {
@@ -194,12 +215,17 @@ function ResultsContent() {
     )
   }
 
-  const { packs } = resultsData
+  const { packs, status, totalStickersPerPack } = resultsData
   const totalStickers = packs.reduce((sum, pack) => sum + pack.stickers.length, 0)
+  const expectedStickers = Math.max(packs.length * totalStickersPerPack, totalStickersPerPack)
+  const progressValue = status === 'completed'
+    ? 100
+    : Math.min(100, Math.round((totalStickers / expectedStickers) * 100))
+  const isProcessing = status === 'processing' || status === 'pending'
 
   return (
     <div className="min-h-dvh bg-background">
-      <Confetti />
+      {status === 'completed' && <Confetti />}
 
       <header className="fixed top-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -219,14 +245,71 @@ function ResultsContent() {
 
       <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-44 sm:pb-12">
         <div className="text-center mb-6 sm:mb-8">
-          <span className="text-primary font-medium text-xs sm:text-sm uppercase tracking-widest">Complete</span>
+          <span className="text-primary font-medium text-xs sm:text-sm uppercase tracking-widest">
+            {isProcessing ? 'Generating' : status === 'failed' ? 'Needs attention' : 'Complete'}
+          </span>
           <h1 className="mt-1 sm:mt-2 text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-3 text-balance">
-            Your Sticker Packs Are Ready
+            {isProcessing
+              ? 'Making Your Sticker Packs'
+              : status === 'failed'
+                ? 'Sticker Pack Generation Failed'
+                : 'Your Sticker Packs Are Ready'}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto text-pretty">
-            {packs.length} pack{packs.length !== 1 ? 's' : ''} with {totalStickers} stickers generated.
+            {isProcessing
+              ? `${totalStickers} sticker${totalStickers !== 1 ? 's' : ''} finished so far. You can refresh this page safely.`
+              : status === 'failed'
+                ? 'No credits were kept for this failed generation. Go back to styles and try again.'
+                : `${packs.length} pack${packs.length !== 1 ? 's' : ''} with ${totalStickers} stickers generated.`}
           </p>
         </div>
+
+        {isProcessing && (
+          <div className="mb-5 rounded-xl border border-border bg-card p-4">
+            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+              <span className="font-medium text-foreground">Sticker progress</span>
+              <span className="text-muted-foreground">{progressValue}%</span>
+            </div>
+            <Progress value={progressValue} />
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {packs.length > 0 ? packs.map((pack) => (
+                <div key={pack.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                  <span className="font-medium text-foreground">{pack.styleName}</span>
+                  <span className="text-muted-foreground">
+                    {pack.stickersCompleted}/{totalStickersPerPack}
+                  </span>
+                </div>
+              )) : (
+                <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                  Preparing your selected styles...
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {resultsData.errors.length > 0 && (
+          <div className="mb-4 sm:mb-6 rounded-xl border border-destructive/20 bg-destructive/10 p-3 sm:p-4">
+            <p className="text-sm font-medium text-destructive">Some stickers need another try</p>
+            <ul className="mt-2 space-y-1 text-sm text-destructive/90">
+              {resultsData.errors.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {status === 'failed' && generationId && (
+          <div className="mb-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button size="lg" onClick={() => router.push(`/create/styles?generationId=${generationId}`)}>
+              <Sparkles className="size-4 mr-2" />
+              Try Again
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => router.push('/create')}>
+              Create New Stickers
+            </Button>
+          </div>
+        )}
 
         {downloadError && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center justify-between">
@@ -255,6 +338,7 @@ function ResultsContent() {
         </div>
 
         {/* Desktop action buttons */}
+        {!isProcessing && packs.length > 0 && (
         <div className="hidden sm:flex flex-col sm:flex-row items-center justify-center gap-4">
           <DownloadAllButton
             onDownload={handleDownloadAll}
@@ -273,6 +357,7 @@ function ResultsContent() {
             LINE Marketplace
           </Button>
         </div>
+        )}
 
         <div className="hidden sm:flex justify-center gap-4 mt-6">
           <Button variant="ghost" onClick={() => router.push('/create')}>
@@ -287,6 +372,7 @@ function ResultsContent() {
       </main>
 
       {/* Mobile sticky bottom bar */}
+      {!isProcessing && packs.length > 0 && (
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:hidden">
         <div className="flex gap-2">
           <DownloadAllButton
@@ -303,16 +389,29 @@ function ResultsContent() {
           </Button>
         </div>
         <div className="flex justify-center gap-3 mt-2">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/create')} className="text-xs h-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/create')}
+            className="text-xs h-8"
+            aria-label="Create more stickers"
+          >
             <Sparkles className="size-3 mr-1" />
             Create More
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/history')} className="text-xs h-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/history')}
+            className="text-xs h-8"
+            aria-label="View history"
+          >
             <History className="size-3 mr-1" />
             History
           </Button>
         </div>
       </div>
+      )}
 
       <StickerModal
         isOpen={isStickerModalOpen}

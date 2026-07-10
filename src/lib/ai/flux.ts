@@ -4,6 +4,7 @@
  */
 
 import { aiConfig, generationConfig } from '../config'
+import type { ModelEntry } from './registry'
 
 const BFL_API_BASE = 'https://api.bfl.ai/v1'
 
@@ -46,7 +47,7 @@ function sleep(ms: number): Promise<void> {
  * 2. Poll the returned polling_url until ready
  * 3. Return the image URL
  */
-export async function generateImage(options: FluxGenerationOptions): Promise<FluxResult> {
+export async function generateImage(entry: ModelEntry, options: FluxGenerationOptions): Promise<FluxResult> {
   const apiKey = aiConfig.bflApiKey
   if (!apiKey) {
     throw new FluxError('BFL_API_KEY not configured', 'NO_API_KEY')
@@ -66,7 +67,7 @@ export async function generateImage(options: FluxGenerationOptions): Promise<Flu
   }
 
   // Step 2: Submit generation request
-  const submitResponse = await fetch(`${BFL_API_BASE}/${aiConfig.bflModel}`, {
+  const submitResponse = await fetch(`${BFL_API_BASE}/${entry.remoteModel}`, {
     method: 'POST',
     headers: {
       'accept': 'application/json',

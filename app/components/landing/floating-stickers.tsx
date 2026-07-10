@@ -76,16 +76,12 @@ function FloatingSticker({ src, alt, top, left, delay, size, isVisible, hideOnMo
 
 export function FloatingStickers() {
   const [isVisible, setIsVisible] = useState(false)
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     // Stagger the appearance
     const timer = setTimeout(() => setIsVisible(true), 300)
     return () => clearTimeout(timer)
   }, [])
-
-  if (!mounted) return null
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">

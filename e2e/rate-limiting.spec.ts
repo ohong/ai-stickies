@@ -6,6 +6,12 @@ async function mockSessionApi(
     remainingGenerations?: number
     maxGenerations?: number
     generationCount?: number
+    latestUpload?: {
+      uploadId: string
+      previewUrl: string
+      filename: string
+      sizeBytes: number
+    } | null
   } = {}
 ) {
   const remaining = overrides.remainingGenerations ?? 8
@@ -24,6 +30,7 @@ async function mockSessionApi(
           remainingGenerations: remaining,
           maxGenerations: max,
           history: [],
+          latestUpload: overrides.latestUpload ?? null,
         },
       }),
     })
@@ -80,7 +87,24 @@ test.describe('Rate Limiting - Exhausted Generations', () => {
     })
     await page.goto('/create')
 
-    const generateBtn = page.getByRole('button', { name: /generate previews/i })
+    await expect(page.getByRole('button', { name: /make my stickers/i })).toHaveCount(0)
+  })
+
+  test('generate button is disabled when an uploaded photo exists but no generations remain', async ({ page }) => {
+    await mockSessionApi(page, {
+      remainingGenerations: 0,
+      maxGenerations: 10,
+      generationCount: 10,
+      latestUpload: {
+        uploadId: 'restored-upload-id',
+        previewUrl: 'https://test.supabase.co/storage/v1/object/sign/uploads/restored-photo.png?token=test',
+        filename: 'restored-photo.png',
+        sizeBytes: 1024,
+      },
+    })
+    await page.goto('/create')
+
+    const generateBtn = page.getByRole('button', { name: /make my stickers/i })
     await expect(generateBtn).toBeDisabled({ timeout: 10000 })
   })
 
@@ -131,7 +155,16 @@ test.describe('Rate Limiting - Session Persistence', () => {
   })
 
   test('generation info shows on create page', async ({ page }) => {
-    await mockSessionApi(page, { remainingGenerations: 8, maxGenerations: 10 })
+    await mockSessionApi(page, {
+      remainingGenerations: 8,
+      maxGenerations: 10,
+      latestUpload: {
+        uploadId: 'restored-upload-id',
+        previewUrl: 'https://test.supabase.co/storage/v1/object/sign/uploads/restored-photo.png?token=test',
+        filename: 'restored-photo.png',
+        sizeBytes: 1024,
+      },
+    })
     await page.goto('/create')
 
     // Footer text says "Uses 1 of your 10 free generations"

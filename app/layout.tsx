@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Agentation } from "./agentation";
+import { getAppUrl } from "@/src/lib/config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +18,7 @@ const geistMono = Geist_Mono({
 const SITE_NAME = "AI Stickies";
 const SITE_DESCRIPTION =
   "Turn your selfie into a pack of 10 cute, personalized LINE stickers in minutes. Choose from 5 unique artistic styles and start expressing yourself!";
+const APP_URL = getAppUrl();
 
 export const metadata: Metadata = {
   title: {
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
-  metadataBase: new URL("https://aistickies.com"),
+  metadataBase: new URL(APP_URL),
   keywords: [
     "LINE stickers",
     "AI stickers",
@@ -75,7 +77,7 @@ const jsonLd = {
   name: SITE_NAME,
   applicationCategory: "DesignApplication",
   description: SITE_DESCRIPTION,
-  url: "https://aistickies.com",
+  url: APP_URL,
   operatingSystem: "Web",
   offers: {
     "@type": "Offer",

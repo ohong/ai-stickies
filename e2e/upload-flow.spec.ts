@@ -16,9 +16,10 @@ async function mockSessionApi(page: Page, overrides: Record<string, unknown> = {
           remainingGenerations: 8,
           maxGenerations: 10,
           history: [],
-          ...overrides,
-        },
-      }),
+        latestUpload: null,
+        ...overrides,
+      },
+    }),
     })
   })
 }
@@ -28,15 +29,39 @@ async function mockSessionApi(page: Page, overrides: Record<string, unknown> = {
  */
 async function mockUploadApi(page: Page) {
   await page.route('**/api/upload', (route) => {
+    const requestBody = route.request().postDataJSON() as { action?: string } | null
+    if (requestBody?.action === 'initiate') {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          sessionId: 'test-session-id',
+          remainingGenerations: 7,
+          signedUrl: 'https://test.supabase.co/storage/v1/object/upload/sign/uploads/test-upload-id?token=test-token',
+          storagePath: 'test-upload-id',
+          token: 'test-token',
+        }),
+      })
+      return
+    }
+
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         uploadId: 'test-upload-id',
-        previewUrl: 'https://example.com/preview.png',
+        previewUrl: 'https://test.supabase.co/storage/v1/object/sign/uploads/test-upload-id.png?token=test',
         sessionId: 'test-session-id',
         remainingGenerations: 7,
       }),
+    })
+  })
+
+  await page.route('**/storage/v1/object/upload/sign/uploads/**', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ Key: 'uploads/test-upload-id' }),
     })
   })
 }
@@ -88,12 +113,20 @@ test.describe('Upload Flow', () => {
     await expect(counter).toBeVisible()
   })
 
-  test('upload page shows language selector', async ({ page }) => {
-    await mockSessionApi(page)
+  test('upload page shows optional language selector after a photo exists', async ({ page }) => {
+    await mockSessionApi(page, {
+      latestUpload: {
+        uploadId: 'restored-upload-id',
+        previewUrl: 'https://test.supabase.co/storage/v1/object/sign/uploads/restored-photo.png?token=test',
+        filename: 'restored-photo.png',
+        sizeBytes: 1024,
+      },
+    })
     await page.goto('/create')
 
-    // LanguageSelect renders a combobox-like trigger or a select element
-    const langLabel = page.getByText(/language/i)
+    await expect(page.getByText('restored-photo.png')).toBeVisible()
+    await page.getByText(/add details/i).click()
+    const langLabel = page.getByText('Sticker Text Language')
     await expect(langLabel).toBeVisible()
   })
 
@@ -110,7 +143,7 @@ test.describe('Upload Flow', () => {
     await mockSessionApi(page)
     await page.goto('/create')
 
-    const sizeLimit = page.getByText(/max\s*10\s*mb/i)
+    const sizeLimit = page.getByText(/up to\s*10\s*mb/i)
     await expect(sizeLimit).toBeVisible()
   })
 
@@ -160,13 +193,11 @@ test.describe('Upload Flow', () => {
     expect(acceptAttr).toContain('image/')
   })
 
-  test('generate button is disabled without upload', async ({ page }) => {
+  test('generate button is hidden without upload', async ({ page }) => {
     await mockSessionApi(page)
     await page.goto('/create')
 
-    const generateBtn = page.getByRole('button', { name: /generate previews/i })
-    await expect(generateBtn).toBeVisible()
-    await expect(generateBtn).toBeDisabled()
+    await expect(page.getByRole('button', { name: /make my stickers/i })).toHaveCount(0)
   })
 
   test('generate button is disabled when session is loading', async ({ page }) => {
@@ -193,9 +224,27 @@ test.describe('Upload Flow', () => {
 
     await page.goto('/create')
 
-    // While session is loading, button should be disabled
-    const generateBtn = page.getByRole('button', { name: /generate previews/i })
-    await expect(generateBtn).toBeDisabled()
+    // While no upload exists, the action stays out of the way.
+    await expect(page.getByRole('button', { name: /make my stickers/i })).toHaveCount(0)
+  })
+
+  test('mobile upload restore shows CTA above the fold', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'mobile-only coverage')
+    await mockSessionApi(page, {
+      latestUpload: {
+        uploadId: 'restored-upload-id',
+        previewUrl: 'https://test.supabase.co/storage/v1/object/sign/uploads/restored-photo.png?token=test',
+        filename: 'restored-photo.png',
+        sizeBytes: 1024,
+      },
+    })
+
+    await page.goto('/create')
+
+    const cta = page.getByRole('button', { name: /make my stickers/i })
+    await expect(cta).toBeVisible()
+    const box = await cta.boundingBox()
+    expect(box?.y ?? 9999).toBeLessThan(844)
   })
 })
 
@@ -219,8 +268,10 @@ test.describe('File Validation', () => {
     expect(acceptAttr).toContain('image/webp')
   })
 
-  test('dropzone shows upload instructions', async ({ page }) => {
-    await expect(page.getByText(/drop your photo here/i)).toBeVisible()
-    await expect(page.getByText(/click to browse/i)).toBeVisible()
+  test('dropzone shows upload instructions', async ({ page, isMobile }) => {
+    await expect(
+      page.getByText(isMobile ? /tap to upload a photo/i : /drop your photo here/i)
+    ).toBeVisible()
+    await expect(page.getByText(/jpg, png, or webp up to 10mb/i)).toBeVisible()
   })
 })

@@ -4,38 +4,37 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { after } from 'next/server'
 import { createAdminClient } from '@/src/lib/supabase/admin'
 import { requireAuth, AuthError } from '@/src/lib/services/auth.service'
-import { createClient } from '@/src/lib/supabase/server'
-import { generateStickerPack, type PackGenerationResult } from '@/src/lib/services/pack.service'
-import { getPublicUrl } from '@/src/lib/utils/storage'
-import { SESSION_COOKIE_NAME } from '@/src/lib/constants/session'
-import { storageConfig } from '@/src/lib/config'
-import { checkCredits, deductCredit } from '@/src/lib/services/credits.service'
-import type { FidelityLevel, StylePreview, Generation } from '@/src/types/database'
+import {
+  deletePacksWithArtifacts,
+  generateStickerPack,
+  reconcileStalePackGeneration,
+  type PackGenerationResult,
+} from '@/src/lib/services/pack.service'
+import { generationConfig, storageConfig } from '@/src/lib/config'
+import {
+  refundPackGenerationCharge,
+  startPackGenerationCharge,
+} from '@/src/lib/services/credits.service'
+import { getSessionIdFromCookie, setSessionCookie } from '@/src/lib/services/session.service'
+import {
+  AuthorizationError,
+  requireGenerationAccess,
+} from '@/src/lib/services/authorization.service'
+import type { StylePreview, Generation, Upload } from '@/src/types/database'
+
+export const runtime = 'nodejs'
+export const maxDuration = 300
 
 interface GeneratePacksRequest {
   generationId: string
   selectedStyleIds: string[]
 }
 
-interface GeneratePacksResponse {
-  packs: Array<{
-    id: string
-    styleName: string
-    stickers: Array<{
-      id: string
-      sequenceNumber: number
-      imageUrl: string
-      emotion: string | null
-      hasText: boolean
-      textContent: string | null
-    }>
-    zipUrl: string | null
-  }>
-  remainingGenerations: number
-  errors: string[]
+interface StartPacksResponse {
+  generationId: string
 }
 
 interface ErrorResponse {
@@ -43,13 +42,18 @@ interface ErrorResponse {
   code?: string
 }
 
+interface GenerationWithUpload extends Generation {
+  uploads: Upload | Upload[] | null
+}
+
 export async function POST(
   request: NextRequest
-): Promise<NextResponse<GeneratePacksResponse | ErrorResponse>> {
+): Promise<NextResponse<StartPacksResponse | ErrorResponse>> {
   try {
-    // Auth gate: require login before generating packs
+    let authenticatedUserId: string
     try {
-      await requireAuth()
+      const user = await requireAuth()
+      authenticatedUserId = user.id
     } catch (err) {
       if (err instanceof AuthError) {
         return NextResponse.json(
@@ -79,77 +83,53 @@ export async function POST(
     }
 
     const supabase = createAdminClient()
-    const cookieStore = await cookies()
+    const sessionId = await getSessionIdFromCookie()
+    const { generation } = await requireGenerationAccess<GenerationWithUpload>(
+      generationId,
+      '*, uploads(*)'
+    )
+    await setSessionCookie(generation.session_id)
 
-    // Verify session
-    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value
-    if (!sessionId) {
+    const wasStale = await reconcileStalePackGeneration(generation)
+    if (generation.status === 'processing' && !wasStale) {
       return NextResponse.json(
-        { error: 'Session not found', code: 'NO_SESSION' },
-        { status: 401 }
+        { error: 'Pack generation is already running', code: 'ALREADY_RUNNING' },
+        { status: 409 }
       )
     }
 
-    // Get session and verify ownership
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single()
+    const { data: existingPacks, error: existingPacksError } = await supabase
+      .from('sticker_packs')
+      .select('id')
+      .eq('generation_id', generationId)
+      .limit(1)
 
-    if (sessionError || !session) {
+    if (existingPacksError) {
       return NextResponse.json(
-        { error: 'Invalid session', code: 'INVALID_SESSION' },
-        { status: 401 }
+        { error: 'Failed to check existing packs', code: 'FETCH_ERROR' },
+        { status: 500 }
       )
     }
 
-    // Check remaining generations (session-based limit)
-    const remaining = session.max_generations - session.generation_count
-    if (remaining < selectedStyleIds.length) {
-      return NextResponse.json(
-        {
-          error: `Not enough generations remaining. Need ${selectedStyleIds.length}, have ${remaining}`,
-          code: 'INSUFFICIENT_GENERATIONS',
-        },
-        { status: 403 }
-      )
-    }
-
-    // Credit check for authenticated users
-    let authenticatedUserId: string | null = null
-    try {
-      const supabaseAuth = await createClient()
-      const { data: { user } } = await supabaseAuth.auth.getUser()
-      if (user) {
-        authenticatedUserId = user.id
-        const { hasCredits, balance } = await checkCredits(user.id)
-        if (!hasCredits) {
-          return NextResponse.json(
-            {
-              error: `No credits remaining. Current balance: ${balance}`,
-              code: 'INSUFFICIENT_CREDITS',
-            },
-            { status: 403 }
-          )
-        }
+    if (existingPacks && existingPacks.length > 0) {
+      if (generation.status === 'failed' || wasStale) {
+        await deletePacksWithArtifacts(existingPacks.map((pack) => pack.id))
+      } else {
+        return NextResponse.json(
+          { error: 'Pack generation has already started', code: 'ALREADY_RUNNING' },
+          { status: 409 }
+        )
       }
-    } catch {
-      // Auth not available (WS1 not merged yet) — continue with session-only limits
     }
 
-    // Get generation record and verify it belongs to session
-    const { data: generation, error: genError } = await supabase
-      .from('generations')
-      .select('*, uploads(*)')
-      .eq('id', generationId)
-      .eq('session_id', sessionId)
-      .single()
+    if (wasStale) {
+      generation.status = 'failed'
+    }
 
-    if (genError || !generation) {
+    if (generation.status === 'completed' && existingPacks && existingPacks.length > 0) {
       return NextResponse.json(
-        { error: 'Generation not found', code: 'NOT_FOUND' },
-        { status: 404 }
+        { error: 'Pack generation has already started', code: 'ALREADY_RUNNING' },
+        { status: 409 }
       )
     }
 
@@ -167,26 +147,80 @@ export async function POST(
       )
     }
 
-    // Update generation status to processing
-    await supabase
-      .from('generations')
-      .update({ status: 'processing' })
-      .eq('id', generationId)
+    if (stylePreviews.length !== selectedStyleIds.length) {
+      return NextResponse.json(
+        { error: 'One or more selected styles were not found', code: 'STYLES_NOT_FOUND' },
+        { status: 404 }
+      )
+    }
 
-    // Generate packs for all selected styles in parallel
-    const allErrors: string[] = []
+    let lockedGeneration: Generation
+    try {
+      lockedGeneration = await startPackGenerationCharge({
+        generationId,
+        sessionId,
+        userId: authenticatedUserId,
+        packCount: selectedStyleIds.length,
+      })
+    } catch (error) {
+      return mapStartPackError(error)
+    }
+
+    const generationRecord: GenerationWithUpload = {
+      ...generation,
+      ...lockedGeneration,
+      uploads: generation.uploads,
+    }
+    const selectedStylePreviews = stylePreviews as StylePreview[]
+
+    after(async () => {
+      await runPackGenerationJob({
+        generation: generationRecord,
+        selectedStylePreviews,
+        reservedCredits: selectedStyleIds.length,
+      })
+    })
+
+    return NextResponse.json({ generationId }, { status: 202 })
+  } catch (error) {
+    console.error('Pack generation error:', error)
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status }
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+async function runPackGenerationJob(input: {
+  generation: GenerationWithUpload
+  selectedStylePreviews: StylePreview[]
+  reservedCredits: number
+}) {
+  const supabase = createAdminClient()
+
+  try {
+    const reference = await getPackReferenceImage(input.generation)
 
     const settled = await Promise.allSettled(
-      (stylePreviews as StylePreview[]).map((stylePreview) =>
+      input.selectedStylePreviews.map((stylePreview) =>
         generateStickerPack({
-          generationId,
+          generationId: input.generation.id,
           stylePreviewId: stylePreview.id,
           styleName: stylePreview.style_name,
           style: stylePreview.fidelity_level,
-          characterPrompt: (generation as Generation).style_description ?? '',
-          language: (generation as Generation).language,
-          personalContext: (generation as Generation).personal_context ?? undefined,
-          count: 10,
+          characterPrompt: input.generation.style_description ?? 'person in reference photo',
+          language: input.generation.language,
+          personalContext: input.generation.personal_context ?? undefined,
+          count: generationConfig.defaultPackSize,
+          referenceImageBase64: reference?.base64,
+          referenceImageMimeType: reference?.mimeType,
         })
       )
     )
@@ -196,72 +230,110 @@ export async function POST(
       const outcome = settled[i]
       if (outcome.status === 'fulfilled') {
         results.push(outcome.value)
-        allErrors.push(...outcome.value.errors)
       } else {
-        const styleName = (stylePreviews as StylePreview[])[i].style_name
+        const styleName = input.selectedStylePreviews[i].style_name
         const message = outcome.reason instanceof Error ? outcome.reason.message : 'Pack generation failed'
         console.error(`Failed to generate pack for style ${styleName}:`, message)
-        allErrors.push(`${styleName}: ${message}`)
       }
     }
 
-    if (results.length === 0) {
-      return NextResponse.json(
-        { error: 'All pack generations failed', code: 'ALL_FAILED' },
-        { status: 500 }
-      )
+    if (results.length !== input.reservedCredits) {
+      await deletePacksWithArtifacts(results.map((result) => result.pack.id))
+      await refundPackGenerationCharge(input.generation.id, input.reservedCredits)
+      await supabase
+        .from('generations')
+        .update({
+          status: 'failed',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', input.generation.id)
+      return
     }
 
-    // Increment generation count (one per pack generated)
     await supabase
-      .from('sessions')
+      .from('generations')
       .update({
-        generation_count: session.generation_count + results.length,
-        last_active_at: new Date().toISOString(),
+        status: results.length > 0 ? 'completed' : 'failed',
+        completed_at: new Date().toISOString(),
       })
-      .eq('id', sessionId)
-
-    // Deduct 1 credit per pack for authenticated users
-    if (authenticatedUserId) {
-      for (let i = 0; i < results.length; i++) {
-        try {
-          await deductCredit(authenticatedUserId)
-        } catch (err) {
-          console.error('Failed to deduct credit:', err)
-          // Don't fail the request — packs were already generated
-          break
-        }
-      }
-    }
-
-    // Build response
-    const packs = results.map(result => ({
-      id: result.pack.id,
-      styleName: result.pack.style_name,
-      stickers: result.stickers.map(sticker => ({
-        id: sticker.id,
-        sequenceNumber: sticker.sequence_number,
-        imageUrl: getPublicUrl(supabase, storageConfig.stickerBucket, sticker.storage_path),
-        emotion: sticker.emotion,
-        hasText: sticker.has_text,
-        textContent: sticker.text_content,
-      })),
-      zipUrl: result.zipUrl,
-    }))
-
-    const newRemaining = session.max_generations - session.generation_count - results.length
-
-    return NextResponse.json({
-      packs,
-      remainingGenerations: newRemaining,
-      errors: allErrors,
-    })
+      .eq('id', input.generation.id)
   } catch (error) {
-    console.error('Pack generation error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Background pack generation failed:', error)
+    await refundPackGenerationCharge(input.generation.id, input.reservedCredits)
+    await supabase
+      .from('generations')
+      .update({
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', input.generation.id)
   }
 }
 
+function mapStartPackError(error: unknown): NextResponse<ErrorResponse> {
+  const message = error instanceof Error ? error.message : 'Failed to start generation'
+
+  if (message.includes('RATE_LIMIT_EXCEEDED')) {
+    return NextResponse.json(
+      { error: 'Not enough generations remaining', code: 'INSUFFICIENT_GENERATIONS' },
+      { status: 403 }
+    )
+  }
+
+  if (message.includes('INSUFFICIENT_CREDITS')) {
+    return NextResponse.json(
+      { error: 'Not enough credits', code: 'INSUFFICIENT_CREDITS' },
+      { status: 403 }
+    )
+  }
+
+  if (message.includes('GENERATION_ALREADY_PROCESSING')) {
+    return NextResponse.json(
+      { error: 'Pack generation is already running', code: 'ALREADY_RUNNING' },
+      { status: 409 }
+    )
+  }
+
+  if (message.includes('ACCESS_DENIED')) {
+    return NextResponse.json(
+      { error: 'Access denied', code: 'ACCESS_DENIED' },
+      { status: 403 }
+    )
+  }
+
+  return NextResponse.json(
+    { error: 'Failed to start generation', code: 'START_FAILED' },
+    { status: 500 }
+  )
+}
+
+async function getPackReferenceImage(
+  generation: Generation & { uploads: Upload | Upload[] | null }
+): Promise<{ base64: string; mimeType: string } | null> {
+  if (!generationConfig.packUseReferenceImage) {
+    return null
+  }
+
+  const upload = Array.isArray(generation.uploads)
+    ? generation.uploads[0]
+    : generation.uploads
+
+  if (!upload?.storage_path) {
+    return null
+  }
+
+  const supabase = createAdminClient()
+  const { data, error } = await supabase.storage
+    .from(storageConfig.uploadBucket)
+    .download(upload.storage_path)
+
+  if (error || !data) {
+    throw new Error(`Failed to download reference image: ${error?.message ?? 'Unknown error'}`)
+  }
+
+  const arrayBuffer = await data.arrayBuffer()
+  return {
+    base64: Buffer.from(arrayBuffer).toString('base64'),
+    mimeType: data.type || upload.mime_type || 'image/png',
+  }
+}

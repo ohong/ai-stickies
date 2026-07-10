@@ -18,8 +18,16 @@ interface SessionState {
   remainingGenerations: number
   maxGenerations: number
   history: GenerationHistoryItem[]
+  latestUpload: LatestUpload | null
   isLoading: boolean
   error: string | null
+}
+
+export interface LatestUpload {
+  uploadId: string
+  previewUrl: string
+  filename: string
+  sizeBytes: number
 }
 
 interface SessionResponse {
@@ -30,6 +38,7 @@ interface SessionResponse {
     remainingGenerations: number
     maxGenerations: number
     history: GenerationHistoryItem[]
+    latestUpload: LatestUpload | null
   }
   error?: string
 }
@@ -40,6 +49,7 @@ const initialState: SessionState = {
   remainingGenerations: 10,
   maxGenerations: 10,
   history: [],
+  latestUpload: null,
   isLoading: true,
   error: null,
 }
@@ -68,6 +78,7 @@ export function useSession() {
         remainingGenerations: json.data.remainingGenerations,
         maxGenerations: json.data.maxGenerations,
         history: json.data.history,
+        latestUpload: json.data.latestUpload,
         isLoading: false,
         error: null,
       })
@@ -107,18 +118,14 @@ export function useSession() {
   const decrementGenerations = useCallback(() => {
     setState((prev) => {
       const newRemaining = Math.max(0, prev.remainingGenerations - 1)
+      sessionCounterState$.remaining.set(newRemaining)
       return {
         ...prev,
         generationCount: prev.generationCount + 1,
         remainingGenerations: newRemaining,
       }
     })
-    // Sync with Legend State observable outside the setState updater
-    // to avoid updating another component during React's render phase
-    sessionCounterState$.remaining.set(
-      Math.max(0, state.remainingGenerations - 1)
-    )
-  }, [state.remainingGenerations])
+  }, [])
 
   return {
     ...state,

@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import { Heart } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 
 // Conversation that showcases AI Stickies value prop
 const conversation = [
   { type: "message", from: "me", text: "Check out my new stickers!", delay: 600 },
   { type: "sticker", from: "me", src: "/stickers/chibi/01.png", delay: 1600 },
-  { type: "message", from: "friend", text: "Omg is that you?? 😍", delay: 3000 },
+  { type: "message", from: "friend", text: "Omg is that you??", delay: 3000 },
   { type: "message", from: "me", text: "Yep! Made on AIStickies.com", delay: 4200 },
   { type: "sticker", from: "me", src: "/stickers/chibi/07.png", delay: 5400 },
   { type: "hearts", delay: 6200 },
@@ -24,9 +25,11 @@ export function ChatDemo() {
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) {
-      setVisibleItems(conversation.map((_, i) => i));
-      setShowHearts(true);
-      return;
+      const timer = setTimeout(() => {
+        setVisibleItems(conversation.map((_, i) => i));
+        setShowHearts(true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const observer = new IntersectionObserver(
@@ -109,14 +112,6 @@ export function ChatDemo() {
 
                     const isVisible = visibleItems.includes(index);
                     const isMe = item.from === "me";
-                    const isLastFriendSticker = item.type === "sticker" && item.from === "friend" &&
-                      index === conversation.filter(c => c.type === "sticker" && c.from === "friend").length +
-                      conversation.findIndex(c => c.type === "sticker" && c.from === "friend");
-
-                    // Check if this is the last sticker
-                    const lastStickerIndex = [...conversation].reverse().findIndex(c => c.type === "sticker");
-                    const isLastSticker = lastStickerIndex >= 0 && index === conversation.length - 1 - lastStickerIndex - 1; // -1 for hearts
-
                     if (item.type === "message") {
                       return (
                         <div
@@ -179,15 +174,24 @@ export function ChatDemo() {
                                   src={item.src || ""}
                                   alt="Sticker"
                                   fill
+                                  sizes="(max-width: 768px) 96px, 112px"
                                   className="object-contain drop-shadow-md"
                                 />
                               </div>
                               {/* Hearts on last sticker */}
                               {index === 4 && showHearts && (
                                 <div className="absolute -right-1 -top-1 flex flex-col gap-0.5">
-                                  <span className="text-pink-400 text-sm md:text-base animate-pulse">❤</span>
-                                  <span className="text-pink-300 text-xs md:text-sm ml-1.5 animate-pulse" style={{ animationDelay: "100ms" }}>❤</span>
-                                  <span className="text-pink-400 text-[10px] md:text-xs animate-pulse" style={{ animationDelay: "200ms" }}>❤</span>
+                                  <Heart className="size-4 text-pink-400 fill-current animate-pulse" aria-hidden="true" />
+                                  <Heart
+                                    className="ml-1.5 size-3.5 text-pink-300 fill-current animate-pulse"
+                                    style={{ animationDelay: "100ms" }}
+                                    aria-hidden="true"
+                                  />
+                                  <Heart
+                                    className="size-3 text-pink-400 fill-current animate-pulse"
+                                    style={{ animationDelay: "200ms" }}
+                                    aria-hidden="true"
+                                  />
                                 </div>
                               )}
                             </div>
