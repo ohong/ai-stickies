@@ -18,13 +18,15 @@ Restore the photo → five styles → ten-sticker pack → ZIP journey on main, 
 - Live localhost flow: five previews in 18 seconds; ten transparent stickers and downloadable ZIP in 66 seconds total. Verified unauthorized download denial, duplicate pack rejection, and exactly one customer credit charge. Disposable data cleaned up.
 - Provider internal failure was observed on an earlier pack; the app refunded its customer credit. Bounded internal-failure retry was added afterward.
 - 162 existing tests pass. Desktop browser suite: 57 pass, one existing skip. Mobile Safari: 58 pass. Typecheck, lint, and production build pass.
-- Production deployment and latest GitHub CI still pending at this checkpoint.
+- Production deployed to `https://aistickies.com` (Vercel deployment `dpl_Bw2qnAcAjyCammBM1C6Ahk2SWRDw`). The real production flow passed in 60 seconds, including stored ZIP access, ten valid PNGs, private download denial, duplicate rejection, and exactly one credit charge.
+- Live browser upload and all five previews passed. Visual inspection found unwanted LINE lettering; prompts now use “messaging sticker” and explicitly prohibit logos and unsolicited lettering. A final live image smoke check passed in 10 seconds for 2 credits.
+- GitHub CI for `81531d6` is running; local typecheck and lint also pass after the prompt refinement.
 
 ## Checks and operation
 See `docs/SETUP.md` for router configuration and commands. `bun run verify:production` checks core infrastructure and the router without generating images. `scripts/verify-live-release.ts` exercises real integrations with disposable data. `bun run verify:payments` is a separate paid-sales gate.
 
-## Next action
-Finish final checks, commit and push main, wait for GitHub CI, deploy to Vercel, and run the real integration check against the production alias. Confirm stored ZIPs after the bucket correction. Sign-in email delivery and paid checkout are not verified.
+## Remaining limits
+Sign-in email delivery and paid checkout are not verified. New accounts receive three free pack credits. The image budget is per image: five previews normally cost $0.10 and a ten-sticker pack $0.20, before infrastructure and optional prompt optimization. Generated lettering can still contain mistakes and should be reviewed before use.
 
 ---
 

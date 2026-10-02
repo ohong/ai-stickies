@@ -94,9 +94,10 @@ async function buildInput(options: RunwayImageInput) {
     ]
   }
   const requirements =
-    'Keep the reference character recognizable. Single isolated sticker, bold closed dark outline, centered with clear margins, pure white background, no checkerboard or exterior shadows.'
+    'Keep the reference character recognizable. Single isolated sticker, bold closed dark outline, centered with clear margins, pure white background, no checkerboard or exterior shadows. No logos or watermarks. Include lettering only when explicitly requested.'
   // Gen-4 Image accepts at most 1,000 UTF-16 code units, including our constraints.
   const description = options.prompt
+    .replace(/LINE sticker/gi, 'messaging sticker')
     .replace(/transparent(?: PNG)? background/gi, 'plain white background')
     .replace(/\s+/g, ' ')
     .trim()
