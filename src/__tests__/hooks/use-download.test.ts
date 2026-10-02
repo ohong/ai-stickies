@@ -17,8 +17,7 @@ const mockClick = vi.fn()
 let lastCreatedAnchor: { href: string; download: string; click: typeof mockClick }
 
 function mockBlobResponse() {
-  const blob = new Blob(['fake-zip-content'], { type: 'application/zip' })
-  return new Response(blob, { status: 200 })
+  return new Response('fake-zip-content', { status: 200, headers: { 'Content-Type': 'application/zip' } })
 }
 
 describe('useDownload', () => {

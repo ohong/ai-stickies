@@ -72,6 +72,7 @@ export async function chatCompletion(
 
   const response = await fetch(`${FIREWORKS_API_BASE}/chat/completions`, {
     method: 'POST',
+    signal: AbortSignal.timeout(15_000),
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${aiConfig.fireworksApiKey}`,

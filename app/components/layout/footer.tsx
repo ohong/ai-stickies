@@ -38,7 +38,7 @@ export function Footer() {
           </div>
 
           <p className="text-xs md:text-sm text-muted-foreground">
-            {new Date().getFullYear()} AI Stickies
+            {new Date().getFullYear()} AI Stickies · Powered by Runway
           </p>
         </div>
       </PageContainer>

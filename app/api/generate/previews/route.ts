@@ -7,7 +7,7 @@ import {
   refundGenerationCount,
 } from '@/src/lib/services/session.service'
 import { generateStylePreviews } from '@/src/lib/services/generation.service'
-import type { Language, Provider } from '@/src/types/database'
+import type { Language } from '@/src/types/database'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -17,7 +17,6 @@ interface GeneratePreviewsRequest {
   styleDescription?: string
   personalContext?: string
   language: Language
-  provider?: Provider
 }
 
 interface PreviewData {
@@ -108,7 +107,6 @@ export async function POST(
         styleDescription: body.styleDescription,
         personalContext: body.personalContext,
         language: body.language,
-        provider: body.provider,
       })
 
       return NextResponse.json({

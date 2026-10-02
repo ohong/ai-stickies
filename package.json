@@ -14,7 +14,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "verify:local": "bunx tsc --noEmit && bun run lint && bun run test && bun run build && bun run test:e2e",
-    "verify:production": "bun scripts/verify-setup.ts && bun scripts/verify-stripe-prices.ts && bun scripts/test-providers.ts"
+    "verify:payments": "bun scripts/verify-setup.ts --payments && bun scripts/verify-stripe-prices.ts",
+    "verify:production": "bun scripts/verify-setup.ts && bun scripts/test-providers.ts"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",

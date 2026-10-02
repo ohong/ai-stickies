@@ -1,38 +1,15 @@
+import { existsSync } from 'fs'
+import { generateImage as generateRunwayImage, resultToUrl } from '../src/lib/ai/provider'
 /**
  * Generate sample stickers for the landing page hero section
  * Run with: bun scripts/generate-landing-stickers.ts
  */
 
-import { mkdir, writeFile, readFile } from 'fs/promises'
-import { existsSync } from 'fs'
+import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 
-// Load .env.local
-const envPath = path.join(process.cwd(), '.env.local')
-if (existsSync(envPath)) {
-  const envContent = await readFile(envPath, 'utf-8')
-  for (const line of envContent.split('\n')) {
-    const trimmed = line.trim()
-    if (trimmed && !trimmed.startsWith('#')) {
-      const [key, ...valueParts] = trimmed.split('=')
-      const value = valueParts.join('=')
-      if (key && value) {
-        process.env[key] = value
-      }
-    }
-  }
-}
-
-const BFL_API_BASE = 'https://api.bfl.ai/v1'
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'landing')
-const BFL_API_KEY = process.env.BFL_API_KEY
 
-if (!BFL_API_KEY) {
-  console.error('Error: BFL_API_KEY not configured')
-  process.exit(1)
-}
-
-// Diverse sticker prompts showcasing different styles and emotions
 const stickerPrompts = [
   {
     name: 'sticker-wave',
@@ -84,74 +61,8 @@ const stickerPrompts = [
   },
 ]
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 async function generateImage(prompt: string): Promise<string> {
-  // Submit generation request
-  const submitResponse = await fetch(`${BFL_API_BASE}/flux-2-pro`, {
-    method: 'POST',
-    headers: {
-      'accept': 'application/json',
-      'Content-Type': 'application/json',
-      'x-key': BFL_API_KEY!,
-    },
-    body: JSON.stringify({
-      prompt,
-      width: 512,
-      height: 512,
-      output_format: 'png',
-    }),
-  })
-
-  if (!submitResponse.ok) {
-    const errorText = await submitResponse.text()
-    throw new Error(`Submit failed: ${errorText}`)
-  }
-
-  const { polling_url } = await submitResponse.json() as { id: string; polling_url: string }
-
-  // Poll for result
-  let attempts = 0
-  while (attempts < 120) {
-    await sleep(500)
-    attempts++
-
-    const pollResponse = await fetch(polling_url, {
-      method: 'GET',
-      headers: {
-        'accept': 'application/json',
-        'x-key': BFL_API_KEY!,
-      },
-    })
-
-    if (!pollResponse.ok) {
-      const errorText = await pollResponse.text()
-      throw new Error(`Poll failed: ${errorText}`)
-    }
-
-    const { status, result } = await pollResponse.json() as {
-      status: string
-      result?: { sample: string }
-    }
-
-    if (status === 'Ready') {
-      if (!result?.sample) throw new Error('No image URL in response')
-      return result.sample
-    }
-
-    if (status === 'Pending' || status === 'Processing') {
-      if (attempts % 10 === 0) console.log(`  Still generating... (${attempts}s)`)
-      continue
-    }
-
-    if (status === 'Error' || status === 'Failed') {
-      throw new Error(`Generation failed: ${status}`)
-    }
-  }
-
-  throw new Error('Generation timed out')
+  return resultToUrl(await generateRunwayImage({ prompt }))
 }
 
 async function downloadImage(url: string, outputPath: string): Promise<void> {

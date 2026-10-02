@@ -1,56 +1,34 @@
 #!/usr/bin/env bun
+import { readFile, writeFile } from 'node:fs/promises'
+import { dryRunImage } from '../src/lib/ai/runway'
+import { generateImage, resultToBase64 } from '../src/lib/ai/provider'
+import { processForLine } from '../src/lib/services/image-processing.service'
 
-import { getAvailableModels, getDefaultModel, MODELS } from '../src/lib/ai/registry'
-import { generateImageWithFallback } from '../src/lib/ai/provider'
-
-console.log('AI image model configuration')
-console.log('')
-console.log('Registry order:')
-for (const model of MODELS) {
-  console.log(`  ${model.id} -> ${model.adapter}:${model.remoteModel}`)
+const input = {
+  prompt:
+    'A cheerful chibi sticker of the reference character waving, bold dark outline, white background.',
+  referenceImage: (await readFile('public/stickers/chibi/01.png')).toString(
+    'base64',
+  ),
+  referenceImageMimeType: 'image/png',
 }
-console.log('')
-
-const availableModels = getAvailableModels()
-console.log('Available models:', availableModels.map((model) => model.id))
-
-try {
-  console.log('Default model:', getDefaultModel().id)
-} catch (error) {
-  console.error('No default model:', error)
-  process.exit(1)
+const routing = await dryRunImage(input)
+console.log('Runway budget check:', routing)
+if (process.argv.includes('--live')) {
+  const started = Date.now()
+  const result = await generateImage(input)
+  const { data } = await resultToBase64(result)
+  const image = await processForLine(Buffer.from(data, 'base64'))
+  const output = '/tmp/ai-stickies-runway-smoke.png'
+  await writeFile(output, image)
+  console.log({
+    model: result.model,
+    credits: result.costCredits,
+    elapsedSeconds: (Date.now() - started) / 1000,
+    output,
+  })
+} else {
+  console.log(
+    'Dry run only. Add --live to generate one image for at most $0.04 including one confirmed-failure retry.',
+  )
 }
-
-console.log('')
-console.log('Generating one smoke-test image per available model...')
-
-let failureCount = 0
-
-for (const model of availableModels) {
-  try {
-    const result = await generateImageWithFallback({
-      model: model.id,
-      prompt: 'LINE sticker of a cheerful person waving, transparent background, bold outline',
-      maxAttemptsPerModel: 1,
-      maxFallbackModels: 1,
-    })
-    const hasImage = Boolean(result.imageBase64 || result.imageUrl)
-    if (hasImage) {
-      console.log(`${model.id}: ok`)
-    } else {
-      failureCount += 1
-      console.error(`${model.id}: missing image data`)
-    }
-  } catch (error) {
-    failureCount += 1
-    console.error(`${model.id}: failed`)
-    console.error(error)
-  }
-}
-
-if (failureCount > 0) {
-  console.error(`Provider smoke test failed for ${failureCount} model(s).`)
-  process.exit(1)
-}
-
-console.log('All available image providers passed.')

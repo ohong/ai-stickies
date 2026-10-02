@@ -76,11 +76,7 @@ function ResultsContent() {
   } = useDownload()
 
   useEffect(() => {
-    if (!generationId) {
-      setError('No generation ID provided')
-      setIsLoading(false)
-      return
-    }
+    if (!generationId) return
 
     let isMounted = true
     let intervalId: ReturnType<typeof setInterval> | null = null
@@ -160,7 +156,7 @@ function ResultsContent() {
     setIsPlatformModalOpen(false)
   }
 
-  if (isLoading) {
+  if (isLoading && generationId) {
     return (
       <div className="min-h-dvh bg-background">
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
@@ -201,7 +197,7 @@ function ResultsContent() {
             <span className="text-2xl text-destructive">!</span>
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            {error || 'Results not found'}
+            {!generationId ? 'No generation ID provided' : error || 'Results not found'}
           </h2>
           <p className="text-muted-foreground mb-6">
             The generation may have expired or there was an error loading it.

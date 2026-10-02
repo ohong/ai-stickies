@@ -19,9 +19,9 @@ AI Stickies is a Next.js application that generates personalized messaging stick
 - **State Management**: Legend State (for performance-critical features)
 - **Backend**: Supabase (PostgreSQL + Storage)
 - **AI Providers**:
-  - Image models are configured in `src/lib/ai/registry.ts`
-  - `IMAGE_MODEL` selects the default model (`nano-banana-2`, `nano-banana-pro`, `flux-2-pro`, `gpt-image`)
-  - Fireworks AI handles prompt optimization
+  - Runway Gen-4 Image Turbo through a dedicated router in `src/lib/ai/runway.ts`
+  - Hard cap: 2 Runway credits ($0.02) per image; one retry only for confirmed internal failures, at most $0.04 per image
+  - Fireworks optionally handles prompt optimization; templates remain available
 - **Package Manager**: Bun
 - **Testing**: Vitest (unit tests) + Playwright (E2E tests)
 
@@ -82,12 +82,11 @@ Reference `docs/LINE_SPECS.md` for exact specifications:
 
 ## Common Tasks
 
-### Adding a New AI Provider
-1. Add a model entry to `src/lib/ai/registry.ts`
-2. Reuse an existing adapter when possible (`fal`, `bfl`, `openai`)
-3. Add a new adapter in `src/lib/ai/` only for a new transport family
-4. Update environment variables
-5. Add/update tests and `scripts/test-providers.ts`
+### Changing Image Generation
+1. Keep the Runway router allowlist and spending cap enforced in `src/lib/ai/runway.ts`.
+2. Never retry an ambiguous submission, timeout, or moderation failure; never add unbounded fallbacks.
+3. Run `bun scripts/test-providers.ts` for a free dry run; `--live` generates one paid image (at most $0.04 including the bounded retry).
+4. Verify reference likeness, real transparency, and pack downloads through the running app.
 
 ### Adding a New Sticker Style
 1. Update `src/constants/styles.ts`
@@ -135,7 +134,7 @@ Use `scripts/` for quick validation:
 ### Rate Limiting
 - Session-based limits: 10 generations per 24 hours
 - API rate limits configured per provider
-- Implement exponential backoff for retries
+- Poll existing tasks; retry only a confirmed internal failure once
 
 ## Environment Variables
 
@@ -143,9 +142,10 @@ Required variables in `.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Public key
 - `SUPABASE_SECRET_KEY` - Service role key
-- `BFL_API_KEY` - FLUX.2 API key
-- `GEMINI_API_KEY` - Gemini API key
-- `FIREWORKS_API_KEY` - Fireworks AI key
+- `RUNWAY_API_KEY` - Runway API key
+- `RUNWAY_IMAGE_ROUTER_ID` - Router UUID
+- `RUNWAY_IMAGE_ROUTER_SLUG` - Router slug
+- `FIREWORKS_API_KEY` - Optional Fireworks AI key
 
 See `docs/SETUP.md` for complete list and setup instructions.
 
@@ -169,7 +169,7 @@ See `docs/SETUP.md` for complete list and setup instructions.
 **AI generation timeout**
 - Check provider API status
 - Verify API keys are valid
-- Try alternative provider
+- Verify router configuration and budget
 
 ### Logging
 - Server logs: Check terminal running `bun dev`

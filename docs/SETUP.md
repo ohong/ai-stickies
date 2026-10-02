@@ -6,9 +6,9 @@ Quick setup guide to get AI Stickies running.
 
 - Bun installed (`curl -fsSL https://bun.sh/install | bash`)
 - Active Supabase project
-- Stripe account with one-time Price IDs for each credit pack
-- At least one image provider API key (`BFL_API_KEY`, `FAL_API_KEY`, or `OPENAI_API_KEY`)
-- Fireworks API key for prompt optimization
+- Optional Stripe account with one-time Price IDs for paid credit purchases
+- Runway API key and a dedicated image router (configuration below)
+- Optional Fireworks API key for prompt optimization; templates work without it
 
 ## Step 1: Environment Variables
 
@@ -20,12 +20,11 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 SUPABASE_SECRET_KEY=your_service_role_key
 
-# AI Providers
-BFL_API_KEY=your_bfl_flux_key
-FAL_API_KEY=your_fal_key
-OPENAI_API_KEY=your_openai_key
-FIREWORKS_API_KEY=your_fireworks_key
-IMAGE_MODEL=flux-2-pro
+# Image generation
+RUNWAY_API_KEY=your_runway_key
+RUNWAY_IMAGE_ROUTER_ID=your_router_uuid
+RUNWAY_IMAGE_ROUTER_SLUG=ai-stickies-images-v1
+FIREWORKS_API_KEY=your_optional_fireworks_key
 
 # Stripe
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
@@ -86,7 +85,6 @@ supabase projects list
 
 ```bash
 bun scripts/verify-setup.ts
-bun scripts/verify-stripe-prices.ts
 bun scripts/test-providers.ts
 ```
 
@@ -160,7 +158,7 @@ Visit http://localhost:3000
 
 **Cause**: AI provider rate limits
 
-**Fix**: Wait 1 minute or switch provider in `.env.local`
+**Fix**: Wait for capacity and try again. Only confirmed internal failures retry once.
 
 ## Testing the Full Flow
 
@@ -180,3 +178,37 @@ Visit http://localhost:3000
 - See `docs/BUILD_PLAN.md` for architecture details
 - See `docs/LINE_STICKER_SPECS.md` for LINE requirements
 - Check `docs/TESTING.md` for test scenarios
+
+## Runway budget and deployment
+
+Create a dedicated router with `POST https://api.dev.runwayml.com/v1/routers` using your Runway bearer key and `X-Runway-Version: 2024-11-06`:
+
+```json
+{
+  "slug": "ai-stickies-images-v1",
+  "name": "AI Stickies images",
+  "settings": {
+    "schemaVersion": 1,
+    "models": { "mode": "allowlist_only", "ids": ["gen4_image_turbo"] },
+    "maxCreditsPerGeneration": { "image": 2 },
+    "optimizeFor": "cost",
+    "fallback": { "onCapacity": false }
+  }
+}
+```
+
+Save its UUID and slug in the server environment. The app checks the router before each submission and refuses missing or over-budget configuration. Every request produces one 1024px image. One confirmed internal task failure may retry once, for at most 4 credits ($0.04) total per image. Ambiguous network errors, timeouts, and moderation failures never trigger a paid retry. No fallback provider exists. Old provider keys and `IMAGE_MODEL` are ignored.
+
+At Runway's published rate of $0.01 per credit, one image costs $0.02, five previews normally cost $0.10, and a ten-sticker pack normally costs $0.20. Worst-case confirmed-failure retries double these totals. This is image API spend, excluding optional prompt generation, hosting, storage, and tax. The app's customer pack credits are separate from Runway credits.
+
+`bun scripts/test-providers.ts` checks the router without billing. Add `--live` to generate and inspect one image for at most $0.04 including a confirmed-failure retry. Reference uploads are normalized below Runway's data-URI limit. Edge-connected white backgrounds are removed before PNG resizing.
+
+For release, run `bun run verify:local`, set the three Runway variables in Vercel production, then run `vercel deploy --prod`. Verify upload, previews, authenticated pack generation, and ZIP download on the production alias. Roll back with `vercel rollback <previous-deployment-url>`; old provider credentials are not deleted automatically.
+
+Official references: [Runway pricing](https://docs.dev.runwayml.com/guides/pricing/), [router configuration](https://docs.dev.runwayml.com/model-routers/configuration/), [routed generation](https://docs.dev.runwayml.com/model-routers/generating/).
+
+Production currently supports three starter credits per new account. Stripe checkout is not configured; placeholder credit packs are inactive and the pricing page says purchases are unavailable. Use `bun run verify:payments` before enabling paid sales. Google OAuth is disabled in the Supabase project, so the login page offers email sign-in only. Delivery of sign-in emails must be checked separately with an authorized recipient.
+
+The private `stickers` bucket must accept PNG and ZIP files up to 10 MB for pack archives. Individual stickers remain capped at 300 KB by image processing. `scripts/setup-supabase.ts` applies these bucket settings.
+
+Run `LIVE_E2E_URL=https://aistickies.com bun scripts/verify-live-release.ts` for a real integration check. It creates and removes a disposable account, uses Runway and Supabase, verifies five previews, ten transparent PNGs, stored ZIP access, private download denial, duplicate prevention, and one customer credit charge. Image spend is normally $0.30 and at most $0.60 with confirmed-failure retries. It does not send email or purchase credits.

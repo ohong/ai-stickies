@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Header } from '@/app/components/layout/header'
 import { Footer } from '@/app/components/layout/footer'
 import { getCreditPacks } from '@/src/lib/services/credits.service'
@@ -81,6 +82,18 @@ export default async function PricingPage({
             </div>
           )}
         </div>
+
+        {!packError && packs.length === 0 && (
+          <div className="mx-auto mt-8 max-w-md rounded-xl border border-border p-6 text-center">
+            <h2 className="font-semibold">Start with 3 free packs</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              New accounts receive 3 credits. Additional credit purchases are not available yet.
+            </p>
+            <Link href="/create" className="mt-4 inline-block font-medium text-primary underline underline-offset-4">
+              Make your stickers
+            </Link>
+          </div>
+        )}
 
         {packs.length > 0 && (
           <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-3">

@@ -7,12 +7,12 @@ const faqs = [
   {
     question: "How does it work?",
     answer:
-      "Upload a clear selfie photo, choose your preferred art style, and our AI generates a pack of 10 unique stickers featuring your likeness. The entire process takes less than 2 minutes.",
+      "Upload a clear selfie photo, choose your preferred art style, and our AI generates a pack of 10 unique stickers featuring your likeness. Preview styles first, then sign in to create and download your pack.",
   },
   {
     question: "What file formats are supported?",
     answer:
-      "You can upload photos in JPG, PNG, or HEIC format. We recommend using a well-lit, front-facing photo for the best results. Generated stickers come in PNG format with transparent backgrounds.",
+      "You can upload photos in JPG, PNG, or WebP format. We recommend using a well-lit, front-facing photo for the best results. Generated stickers come in PNG format with transparent backgrounds.",
   },
   {
     question: "Can I sell my stickers on LINE?",
@@ -27,7 +27,7 @@ const faqs = [
   {
     question: "Is my photo stored?",
     answer:
-      "We take privacy seriously. Your uploaded photo is processed immediately and automatically deleted from our servers within 24 hours.",
+      "Your photo is stored to generate previews and sticker packs. Anonymous sessions are eligible for daily cleanup after 24 hours of inactivity. Signed-in history is retained.",
   },
 ];
 

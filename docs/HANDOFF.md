@@ -1,3 +1,33 @@
+# AI Stickies release handoff — 2026-10-02
+
+## Objective
+Restore the photo → five styles → ten-sticker pack → ZIP journey on main, using Runway below $0.10 per generated image.
+
+## Decisions and state
+- No open PRs existed. Main started clean at `0280e20`; its last CI failed in download test fixtures.
+- Replaced the Fal/BFL/OpenAI image adapters and registry with Runway Gen-4 Image Turbo through `ai-stickies-images-v1`.
+- Router allows only that model and caps each submission at 2 credits ($0.02). One confirmed internal failure may retry: at most $0.04 per image. No retry on ambiguous requests, timeouts, moderation, or storage errors.
+- Reference images are normalized; prompts fit Runway's 1,000-character limit. White edge-connected backgrounds become transparent without erasing white interior details.
+- Applied six previously uninstalled schema migrations, plus RPC/profile access restrictions and the Runway enum addition. Historical rows remain. Migration history matches repository filenames.
+- Uploads and stickers are private. Stickers storage now accepts PNG and ZIP archives up to 10 MB; each PNG stays under 300 KB.
+- Removed unavailable Google login. New accounts get three starter pack credits; paid checkout remains unavailable because Stripe is unconfigured.
+- Fixed baseline Blob fixture and missing-ID rendering lint failures. Browser tests use a dedicated port and require explicit opt-in to reuse a server.
+
+## Observed evidence
+- Runway smoke image: 10 seconds, 2 credits, 320×320 transparent PNG, 91.5 KB.
+- Live localhost flow: five previews in 18 seconds; ten transparent stickers and downloadable ZIP in 66 seconds total. Verified unauthorized download denial, duplicate pack rejection, and exactly one customer credit charge. Disposable data cleaned up.
+- Provider internal failure was observed on an earlier pack; the app refunded its customer credit. Bounded internal-failure retry was added afterward.
+- 162 existing tests pass. Desktop browser suite: 57 pass, one existing skip. Mobile Safari: 58 pass. Typecheck, lint, and production build pass.
+- Production deployment and latest GitHub CI still pending at this checkpoint.
+
+## Checks and operation
+See `docs/SETUP.md` for router configuration and commands. `bun run verify:production` checks core infrastructure and the router without generating images. `scripts/verify-live-release.ts` exercises real integrations with disposable data. `bun run verify:payments` is a separate paid-sales gate.
+
+## Next action
+Finish final checks, commit and push main, wait for GitHub CI, deploy to Vercel, and run the real integration check against the production alias. Confirm stored ZIPs after the bucket correction. Sign-in email delivery and paid checkout are not verified.
+
+---
+
 # AI Stickies - Developer Handoff Document
 
 > Historical (Jan 2026): superseded by `docs/audit-2026-06-09.md`.

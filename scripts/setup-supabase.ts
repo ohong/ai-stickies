@@ -62,8 +62,8 @@ async function main() {
     'stickers',
     {
       public: false,
-      fileSizeLimit: 500 * 1024, // 500KB per sticker
-      allowedMimeTypes: ['image/png'],
+      fileSizeLimit: 10 * 1024 * 1024, // Pack ZIPs; individual PNGs are capped during processing
+      allowedMimeTypes: ['image/png', 'application/zip'],
     }
   )
 
@@ -72,8 +72,8 @@ async function main() {
       console.log('Bucket "stickers" already exists')
       const { error: updateError } = await supabase.storage.updateBucket('stickers', {
         public: false,
-        fileSizeLimit: 500 * 1024,
-        allowedMimeTypes: ['image/png'],
+        fileSizeLimit: 10 * 1024 * 1024,
+        allowedMimeTypes: ['image/png', 'application/zip'],
       })
 
       if (updateError) {

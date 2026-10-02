@@ -57,10 +57,9 @@ export const supabaseConfig = {
 
 // AI provider configuration
 export const aiConfig = {
-  bflApiKey: process.env.BFL_API_KEY ?? '',
-  falApiKey: process.env.FAL_API_KEY ?? '',
-  openaiApiKey: process.env.OPENAI_API_KEY ?? '',
-  imageModel: process.env.IMAGE_MODEL ?? '',
+  runwayApiKey: process.env.RUNWAY_API_KEY ?? process.env.RUNWAYML_API_SECRET ?? '',
+  runwayRouterId: process.env.RUNWAY_IMAGE_ROUTER_ID ?? '',
+  runwayRouterSlug: process.env.RUNWAY_IMAGE_ROUTER_SLUG ?? '',
   fireworksApiKey: process.env.FIREWORKS_API_KEY ?? '',
 }
 
@@ -82,7 +81,6 @@ export const storageConfig = {
 export const generationConfig = {
   defaultPackSize: 10 as const, // US-1.4: 10 stickers per pack
   batchSize: 5 as const, // Generate N images at a time
-  maxRetries: 1 as const, // Retry failed stickers once
   pollIntervalMs: optionalEnvNumber('POLL_INTERVAL_MS', 2000),
   maxPollAttempts: optionalEnvNumber('MAX_POLL_ATTEMPTS', 60),
   packUseReferenceImage: process.env.PACK_USE_REFERENCE_IMAGE !== 'false',
@@ -99,8 +97,6 @@ export const stripeConfig = {
 
 // Feature flags
 export const featureFlags = {
-  enableFlux: process.env.ENABLE_FLUX !== 'false', // default true (enabled if BFL_API_KEY exists)
-  enableFal: process.env.ENABLE_FAL !== 'false', // default true
   enableMarketplaceExport: process.env.ENABLE_MARKETPLACE_EXPORT === 'true',
 }
 
@@ -114,7 +110,7 @@ export function validateConfig(): void {
   }
 
   // Warn about missing AI keys
-  if (!aiConfig.bflApiKey && !aiConfig.falApiKey && !aiConfig.openaiApiKey) {
+  if (!aiConfig.runwayApiKey) {
     console.warn('Warning: No AI provider API keys configured')
   }
 }

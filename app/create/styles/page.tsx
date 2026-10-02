@@ -53,11 +53,7 @@ function StylesContent() {
   } = useStyleSelection()
 
   useEffect(() => {
-    if (!generationId) {
-      setError('No generation ID provided')
-      setIsLoading(false)
-      return
-    }
+    if (!generationId) return
 
     async function fetchGeneration() {
       try {
@@ -125,7 +121,7 @@ function StylesContent() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && generationId) {
     return (
       <div className="min-h-dvh bg-background">
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
@@ -163,7 +159,7 @@ function StylesContent() {
             <span className="text-2xl text-destructive">!</span>
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            {error || 'Generation not found'}
+            {!generationId ? 'No generation ID provided' : error || 'Generation not found'}
           </h2>
           <p className="text-muted-foreground mb-6">
             The generation may have expired or there was an error loading it.
@@ -246,7 +242,7 @@ function StylesContent() {
         </div>
 
         <p className="hidden sm:block mt-4 text-center text-sm text-muted-foreground">
-          Each pack uses 1 generation. You have {remainingGenerations} remaining.
+          Sign in to create packs. Each pack uses 1 credit and 1 generation. You have {remainingGenerations} generations remaining.
         </p>
       </main>
 

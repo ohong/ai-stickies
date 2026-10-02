@@ -464,7 +464,7 @@ export function Hero() {
             </svg>
           </Link>
           <span className="text-xs text-muted-foreground font-medium">
-            Takes less than 2 minutes
+            Preview five styles before you choose
           </span>
         </div>
       </div>

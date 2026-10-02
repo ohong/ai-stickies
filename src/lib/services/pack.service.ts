@@ -5,7 +5,7 @@
 
 import { createAdminClient } from '../supabase/admin'
 import { generateStickerPackPrompts, type GeneratedStickerPrompt } from './prompt.service'
-import { generateImageWithFallback, resultToBase64 } from '../ai/provider'
+import { generateImage, resultToBase64 } from '../ai/provider'
 import {
   processForLine,
   createMainImageComposite,
@@ -23,7 +23,7 @@ import type {
   Generation,
 } from '../../types/database'
 
-const { batchSize: BATCH_SIZE, maxRetries: MAX_RETRIES } = generationConfig
+const { batchSize: BATCH_SIZE } = generationConfig
 
 export interface PackGenerationInput {
   generationId: string
@@ -284,7 +284,7 @@ async function generateStickersInBatches(
 }
 
 /**
- * Generate a single sticker with retry
+ * Generate a single sticker without resubmitting paid requests
  */
 async function generateSingleSticker(
   packId: string,
@@ -293,86 +293,57 @@ async function generateSingleSticker(
   sequenceNumber: number,
   supabase: ReturnType<typeof createAdminClient>,
   referenceImageBase64?: string,
-  referenceImageMimeType?: string,
-  retryCount = 0
+  referenceImageMimeType?: string
 ): Promise<StickerWithBuffer> {
-  try {
-    // Generate image (with automatic fallback)
-    const result = await generateImageWithFallback({
-      prompt: prompt.fullPrompt,
-      referenceImage: referenceImageBase64,
-      referenceImageMimeType,
-      maxAttemptsPerModel: 1,
-      maxFallbackModels: 2,
+  // Submit once; storage or processing errors must not buy another image.
+  const result = await generateImage({
+    prompt: prompt.fullPrompt,
+    referenceImage: referenceImageBase64,
+    referenceImageMimeType,
+  })
+
+  // Convert to base64 if needed
+  const { data: base64Data } = await resultToBase64(result)
+  const buffer = Buffer.from(base64Data, 'base64')
+
+  // Process for LINE specs
+  const processedBuffer = await processForLine(buffer)
+
+  // Upload to storage
+  const storagePath = `${generationId}/${packId}/${String(sequenceNumber).padStart(2, '0')}.png`
+  const { error: uploadError } = await supabase.storage
+    .from(storageConfig.stickerBucket)
+    .upload(storagePath, processedBuffer, {
+      contentType: 'image/png',
+      upsert: true,
     })
 
-    // Convert to base64 if needed
-    const { data: base64Data } = await resultToBase64(result)
-    const buffer = Buffer.from(base64Data, 'base64')
-
-    // Process for LINE specs
-    const processedBuffer = await processForLine(buffer)
-
-    // Upload to storage
-    const storagePath = `${generationId}/${packId}/${String(sequenceNumber).padStart(2, '0')}.png`
-    const { error: uploadError } = await supabase.storage
-      .from(storageConfig.stickerBucket)
-      .upload(storagePath, processedBuffer, {
-        contentType: 'image/png',
-        upsert: true,
-      })
-
-    if (uploadError) {
-      throw new Error(`Storage upload failed: ${uploadError.message}`)
-    }
-
-    // Create sticker record
-    const { data: sticker, error: dbError } = await supabase
-      .from('stickers')
-      .insert({
-        pack_id: packId,
-        storage_path: storagePath,
-        sequence_number: sequenceNumber,
-        emotion: prompt.emotion,
-        has_text: prompt.hasText,
-        text_content: prompt.textContent,
-        prompt_used: prompt.fullPrompt,
-      })
-      .select()
-      .single()
-
-    if (dbError || !sticker) {
-      // Clean up uploaded file
-      await supabase.storage.from(storageConfig.stickerBucket).remove([storagePath])
-      throw new Error(`Database insert failed: ${dbError?.message}`)
-    }
-
-    return { sticker, buffer: processedBuffer }
-  } catch (error) {
-    // Retry once for non-moderation errors
-    if (retryCount < MAX_RETRIES) {
-      const isModeration =
-        error instanceof Error &&
-        (error.message.includes('MODERATED') || error.message.includes('moderated'))
-
-      if (!isModeration) {
-        console.warn(`Retrying sticker ${sequenceNumber}...`)
-        await sleep(1000) // Brief delay before retry
-        return generateSingleSticker(
-          packId,
-          generationId,
-          prompt,
-          sequenceNumber,
-          supabase,
-          referenceImageBase64,
-          referenceImageMimeType,
-          retryCount + 1
-        )
-      }
-    }
-
-    throw error
+  if (uploadError) {
+    throw new Error(`Storage upload failed: ${uploadError.message}`)
   }
+
+  // Create sticker record
+  const { data: sticker, error: dbError } = await supabase
+    .from('stickers')
+    .insert({
+      pack_id: packId,
+      storage_path: storagePath,
+      sequence_number: sequenceNumber,
+      emotion: prompt.emotion,
+      has_text: prompt.hasText,
+      text_content: prompt.textContent,
+      prompt_used: prompt.fullPrompt,
+    })
+    .select()
+    .single()
+
+  if (dbError || !sticker) {
+    // Clean up uploaded file
+    await supabase.storage.from(storageConfig.stickerBucket).remove([storagePath])
+    throw new Error(`Database insert failed: ${dbError?.message}`)
+  }
+
+  return { sticker, buffer: processedBuffer }
 }
 
 /**
@@ -585,8 +556,4 @@ export async function reconcileStalePackGeneration(
   }
 
   return true
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }

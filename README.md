@@ -26,7 +26,7 @@ Each platform has unique sticker formats and cultural preferences—but the core
 
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4
 - **Backend:** Supabase (PostgreSQL + private upload and sticker storage served through signed URLs)
-- **Image Generation:** Registry-driven routing via `src/lib/ai/registry.ts`; set `IMAGE_MODEL` to `nano-banana-2`, `nano-banana-pro`, `flux-2-pro`, or `gpt-image`
+- **Image Generation:** Runway Gen-4 Image Turbo through a router capped at 2 credits ($0.02) per image. See `docs/SETUP.md`.
 - **Prompt Optimization:** Fireworks AI
 - **Payments:** Stripe Checkout with transactional credit grants
 - **Package Manager:** Bun

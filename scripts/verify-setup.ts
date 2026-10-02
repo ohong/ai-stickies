@@ -16,15 +16,13 @@ const REQUIRED_ENV_VARS = [
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_SECRET_KEY',
   'NEXT_PUBLIC_APP_URL',
-  'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
+  'RUNWAY_IMAGE_ROUTER_ID',
+  'RUNWAY_IMAGE_ROUTER_SLUG',
 ]
 
 const IMAGE_PROVIDER_ENV_VARS = [
-  'FAL_API_KEY',
-  'BFL_API_KEY',
-  'OPENAI_API_KEY',
+  'RUNWAY_API_KEY',
+  'RUNWAYML_API_SECRET',
 ]
 
 const REQUIRED_TABLES = [
@@ -46,6 +44,7 @@ const REQUIRED_BUCKETS = [
 
 async function main() {
   console.log('Verifying AI Stickies Setup...\n')
+  if (process.argv.includes('--payments')) REQUIRED_ENV_VARS.push('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET')
   let failureCount = 0
 
   const fail = (message: string) => {

@@ -18,7 +18,7 @@ export interface ProcessingOptions {
 const DEFAULT_OPTIONS: ProcessingOptions = {
   width: STICKER_DIMENSIONS.maxWidth,
   height: STICKER_DIMENSIONS.maxHeight,
-  maxSizeKB: LINE_SPECS.sticker.maxSizeKB - 50, // Leave 50KB margin
+  maxSizeKB: Math.min(300, LINE_SPECS.sticker.maxSizeKB - 50),
   maintainAspectRatio: true,
 }
 
@@ -55,7 +55,9 @@ export async function processForLine(
   const metadata = await sharp(imageBuffer).metadata()
   console.log(`[image-processing] Original dimensions: ${metadata.width}x${metadata.height}`)
 
-  // Start with base processing - ensure alpha channel
+  imageBuffer = await ensureTransparency(imageBuffer)
+
+  // Resize after removing the edge-connected background.
   const pipeline = sharp(imageBuffer)
     .ensureAlpha()
     .resize({
@@ -319,20 +321,40 @@ export async function ensureTransparency(
 
     const pixels = new Uint8Array(data)
 
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i]
-      const g = pixels[i + 1]
-      const b = pixels[i + 2]
-
-      // Check if pixel matches background color within tolerance
-      if (
-        Math.abs(r - bgColor.r) <= tolerance &&
-        Math.abs(g - bgColor.g) <= tolerance &&
-        Math.abs(b - bgColor.b) <= tolerance
-      ) {
-        // Make pixel transparent
-        pixels[i + 3] = 0
-      }
+    // Flood only from the image boundary. White eyes, teeth and clothing stay opaque.
+    const visited = new Uint8Array(info.width * info.height)
+    const queue = new Int32Array(info.width * info.height)
+    let head = 0
+    let tail = 0
+    const enqueue = (x: number, y: number) => {
+      if (x < 0 || y < 0 || x >= info.width || y >= info.height) return
+      const index = y * info.width + x
+      if (visited[index]) return
+      visited[index] = 1
+      const offset = index * 4
+      if (pixels[offset + 3] === 0 || (
+        Math.abs(pixels[offset] - bgColor.r) <= tolerance &&
+        Math.abs(pixels[offset + 1] - bgColor.g) <= tolerance &&
+        Math.abs(pixels[offset + 2] - bgColor.b) <= tolerance
+      )) queue[tail++] = index
+    }
+    for (let x = 0; x < info.width; x++) {
+      enqueue(x, 0)
+      enqueue(x, info.height - 1)
+    }
+    for (let y = 0; y < info.height; y++) {
+      enqueue(0, y)
+      enqueue(info.width - 1, y)
+    }
+    while (head < tail) {
+      const index = queue[head++]
+      pixels[index * 4 + 3] = 0
+      const x = index % info.width
+      const y = Math.floor(index / info.width)
+      enqueue(x - 1, y)
+      enqueue(x + 1, y)
+      enqueue(x, y - 1)
+      enqueue(x, y + 1)
     }
 
     const result = await sharp(Buffer.from(pixels), {

@@ -87,7 +87,7 @@ export async function generateStickerPackPrompts(
       personalContext: input.personalContext,
       language: input.language,
       emotionsList: emotions,
-    })
+    }, 1)
 
     return prompts.map(p => enrichPrompt(p, styleConfig))
   } catch (error) {

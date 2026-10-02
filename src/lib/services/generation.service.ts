@@ -4,13 +4,13 @@
  */
 
 import { createAdminClient } from '@/src/lib/supabase/admin'
-import { generateImageWithFallback, resultToBase64 } from '@/src/lib/ai/provider'
+import { generateImage, resultToBase64 } from '@/src/lib/ai/provider'
 import { generateSimplePreviewPrompt } from '@/src/lib/services/prompt.service'
 import { processForLine } from '@/src/lib/services/image-processing.service'
 import { STYLE_ORDER, getStyleConfig } from '@/src/constants/styles'
-import { storageConfig, generationConfig } from '@/src/lib/config'
+import { storageConfig } from '@/src/lib/config'
 import { getSignedUrl } from '@/src/lib/utils/storage'
-import type { FidelityLevel, Language, Provider, StylePreview } from '@/src/types/database'
+import type { FidelityLevel, Language, StylePreview } from '@/src/types/database'
 
 export interface GeneratePreviewsInput {
   sessionId: string
@@ -19,7 +19,6 @@ export interface GeneratePreviewsInput {
   styleDescription?: string
   personalContext?: string
   language: Language
-  provider?: Provider
 }
 
 export interface GeneratedPreview {
@@ -53,7 +52,7 @@ export async function generateStylePreviews(
       personal_context: input.personalContext ?? null,
       language: input.language,
       status: 'processing',
-      provider: input.provider ?? null,
+      provider: 'runway',
     })
     .select()
     .single()
@@ -89,7 +88,6 @@ export async function generateStylePreviews(
         mimeType,
         styleDescription: input.styleDescription,
         personalContext: input.personalContext,
-        provider: input.provider,
       })
     })
 
@@ -104,6 +102,7 @@ export async function generateStylePreviews(
         previews.push(result.value)
       } else {
         errors.push(result.reason?.message ?? 'Unknown error')
+        console.warn('[previews] Style failed:', result.reason?.message ?? 'Unknown error')
       }
     }
 
@@ -147,7 +146,6 @@ interface SinglePreviewInput {
   mimeType: string
   styleDescription?: string
   personalContext?: string
-  provider?: Provider
 }
 
 /**
@@ -166,14 +164,11 @@ async function generateSinglePreview(
     personalContext: input.personalContext,
   })
 
-  // Generate image with AI provider (with automatic fallback)
-  const result = await generateImageWithFallback({
+  // Generate one image within the Runway router budget.
+  const result = await generateImage({
     prompt,
     referenceImage: input.referenceImageBase64,
     referenceImageMimeType: input.mimeType,
-    provider: input.provider,
-    width: generationConfig.imageWidth,
-    height: generationConfig.imageHeight,
   })
 
   // Convert result to base64, then process for LINE specs (resize + compress to fit bucket limit)
